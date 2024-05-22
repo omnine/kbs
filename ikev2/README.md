@@ -22,7 +22,7 @@ Installing FreeRadius is much easier than NPS, so the final machines are,
 | pfsense  | WAN, LAN  | 172.17.17.21,  192.168.190.66|
 | Windows client  | WAN  | 172.17.17.31  |
 | freeradius  | LAN  | 192.168.190.37  |
-| dualradius  | LAN  | 92.168.190.13  |
+| dualradius  | LAN  | 192.168.190.13  |
 
 They are all hosted on VMWare ESXi server.
 
