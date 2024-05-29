@@ -51,3 +51,6 @@ CONFIG_TLSV12=y
 `./hostapd wired.conf -dd`
 
 `./wpa_supplicant -Dwired -iens192 -c./nanoart.conf -dd -K`
+
+# References
+[eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)
