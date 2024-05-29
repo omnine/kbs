@@ -1,6 +1,6 @@
 # Build a lab of SQL Server Failover Cluster in ESXi
 
-It should be easy if you follow the 1-4 **Step-by-step Installation of SQL Server 2019 on a Windows Server 2019 Failover Cluster**. The main challenge is how to provide a shared disks. Luckily this link is very helpful.
+It should be easy if you follow the 1-4 **Step-by-step Installation of SQL Server 2019 on a Windows Server 2019 Failover Cluster**. The main challenge is how to provide the shared disks. Luckily this link is very helpful.
 
 [Build and run Windows Failover Clusters on VMware ESXi](https://www.vkernel.ro/blog/build-and-run-windows-failover-clusters-on-vmware-esxi)
 
@@ -24,18 +24,29 @@ Now it is time to create a shared disk in `Node 1`. I had to create a SCSI contr
 For `Node 2`, do the same thing, apart from when `Add hard disk`, choose `Existing hard disk`.  
 ![existing_diskt](./doc/existing_disk.png)
 
-Then open `Computer Management` to force this new disk online and assign it a driver letter.
+Then open `Computer Management` to bring this new disk online and assign it a driver letter.
 ![disk_management](./doc/disk_management.png)
 
 Now you can install the failover cluster feature in **Server Manager**.
 You should be able to add this disk,  
 ![disk_in_cluster](./doc/disk_in_cluster.png)
 
-Please validate the cluster before install SQL Server one each node.  
+Please validate the cluster before installing SQL Server one each node.  
 ![validate_cluster](./doc/validate_cluster.png)
 
 On the first node, choose `New SQL server failover cluster installation`. On the other nodes, `Add node to a SQL server failover cluster`.  
 ![node_status](./doc/node_status.png)
+
+# Test
+
+You can double check the vip here.  
+![sql_vip](./doc/sql_vip.png)
+
+Also you can check which node is active.  
+![sql_services](./doc/sql_services.png)
+
+We can simulate the swap by,  
+![failover_disk](./doc/failover_swap.png)
 
 # References
 [Build and run Windows Failover Clusters on VMware ESXi](https://www.vkernel.ro/blog/build-and-run-windows-failover-clusters-on-vmware-esxi)
