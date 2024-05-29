@@ -13,27 +13,28 @@ It should be easy if you follow the 1-4 **Step-by-step Installation of SQL Serve
 
 
 
-It is important to make all nodes have the same OS and it update. I had this very strange problem due to Windows Update failure with error `0x800f0986`.
+It is important to make all nodes have the same OS and its update. I had this very strange problem due to Windows Update failure with error `0x800f0986`.  
 ![node_rule_failed](./doc/node_rule_failed.png)
 
-Online search found this solution `DISM.exe /Online /Cleanup-Image /RestoreHealth /Source:"\HealthyMachine\C$\Windows" /LimitAccess`
+If you are unlucky like me, then try this solution `DISM.exe /Online /Cleanup-Image /RestoreHealth /Source:"\HealthyMachine\C$\Windows" /LimitAccess`
 
-Now it is time to create a shared disk in node 1. I had to create a SCSI controller for it first.  
+Now it is time to create a shared disk in `Node 1`. I had to create a SCSI controller for it first.  
 ![shared_disk](./doc/shared_disk.png)
 
-For node 2, do the same thing, apart from when `Add hard disk`, choose `Existing hard disk`.  
+For `Node 2`, do the same thing, apart from when `Add hard disk`, choose `Existing hard disk`.  
 ![existing_diskt](./doc/existing_disk.png)
 
-Then open `Computer Management` to force this new disk online and assign a driver letter.
+Then open `Computer Management` to force this new disk online and assign it a driver letter.
 ![disk_management](./doc/disk_management.png)
 
-Now you can install the failover cluster feature in Server Manager.
+Now you can install the failover cluster feature in **Server Manager**.
 You should be able to add this disk,  
 ![disk_in_cluster](./doc/disk_in_cluster.png)
 
 Please validate the cluster before install SQL Server one each node.  
 ![validate_cluster](./doc/validate_cluster.png)
 
+On the first node, choose `New SQL server failover cluster installation`. On the other nodes, `Add node to a SQL server failover cluster`.  
 ![node_status](./doc/node_status.png)
 
 # References
