@@ -4,8 +4,8 @@ In order to test RADIUS authentication with EAP-PEAP, generally a physical WIFI 
 
 | Machine | Roles |
 | ----    | ----  |
-| 192.168.190.62 (centos 8) | Access Point hostapd (the wired authenticator) |
-| 192.168.190.37 (centos 8) | Supplicant wpa_supplicant, radius |
+| 192.168.190.62 (Ubuntu 22.04.4) | Access Point hostapd (the wired authenticator) |
+| 192.168.190.37 (Ubuntu 22.04.4) | Supplicant wpa_supplicant, radius |
 
 ## OpenSSL
 
@@ -45,12 +45,31 @@ sudo apt-get install libnl-route-3-dev
 CONFIG_EAP_TLSV1_3=y
 CONFIG_TLSV12=y
 ```
+# Authentication Only
+
+#define wpa_dbg wpa_msg
+
+add `#include <in6addr.h>` in `D:\github\hostap\wpa_supplicant\wpa_supplicant_i.h`
+Cannot open source file: '..\..\..\src\rsn_supp\peerkey.c': No such file or directory
+D:\github\hostap\src\l2_packet\l2_packet_pcap.c
+
+error C2037: left of 'meth' specifies undefined struct/union 'rsa_st'
+
+//#include <net/if.h>
+#include <WinSock2.h>
+
+CONFIG_NATIVE_WINDOWS=y
+#CONFIG_IPV6=y
+
+`eapol_test.exe -c nanoart.conf -a 192.168.190.13 -p1812 -stesting123`
 
 ## Test
 
-`./hostapd wired.conf -dd`
+`sudo ./hostapd wired.conf -dd`
 
 `./wpa_supplicant -Dwired -iens192 -c./nanoart.conf -dd -K`
 
 # References
 [eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)
+[Testing RADIUS from CLI](https://www.securityccie.net/2023/02/04/testing-radius-from-cli/)
+[Testing with eapol_test](https://wiki.geant.org/display/H2eduroam/Testing+with+eapol_test)
