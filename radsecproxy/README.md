@@ -87,3 +87,4 @@ You can run it in foregroud to make sure everything works before put it into a s
 
 `./radsecproxy -f -d 5 -c ./radsecproxy.conf`
 
+If your RADIUS client supports `RADSEC`, then `radsecproxy1` can be omitted. JRADIUS is supposed to support `RADSEC` on `TLSv1`, Unfortunately I got the same error `SSL_accept failed` which is described in https://github.com/radsecproxy/radsecproxy/issues/99.
