@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context-3.0.xsd">
+
+    <bean id="proConsoleService"
+        class="com.jumpmind.symmetric.console.service.impl.ProConsoleService" />
+    
+    <bean id="consoleUserService"
+        class="com.jumpmind.symmetric.console.service.impl.ConsoleUserService" />
+	
+	<bean id="consoleEventService"
+        class="com.jumpmind.symmetric.console.service.impl.ConsoleEventService" />
+        
+    <bean id="remoteStatusService"
+        class="com.jumpmind.symmetric.console.remote.RemoteStatusService" />     
+        
+    <bean id="batchStatusService"
+        class="com.jumpmind.symmetric.console.remote.BatchStatusService" />           
+
+	<bean id="alterDatabaseInterceptor"
+		class="com.jumpmind.symmetric.console.service.impl.ConsoleAlterDatabaseInterceptor" />
+
+	<bean id="consolePurgeListener"
+		class="com.jumpmind.symmetric.console.service.impl.ConsolePurgeListener" />
+
+	<bean id="logMinerService"
+		class="com.jumpmind.symmetric.console.service.impl.LogMinerService" />
+        
+    <bean id="nodeRegistrationAuthenticator"
+        class="com.jumpmind.symmetric.console.service.impl.NodeRegistrationAuthenticator" />
+
+    <bean id="nodeRegistrationSecretAuthenticator"
+        class="com.jumpmind.symmetric.console.authentication.NodeRegistrationSecretAuthenticator" />
+
+    <bean id="nodeRegistrationSecretListener"
+        class="com.jumpmind.symmetric.console.authentication.NodeRegistrationSecretListener" />
+
+    <bean id="nodePasswordFilter"
+        class="com.jumpmind.symmetric.security.NodePasswordFilter" />
+        
+    <bean id="smtpPasswordFilter"
+        class="com.jumpmind.symmetric.security.SmtpPasswordFilter" />
+
+    <bean id="designService"
+        class="com.jumpmind.symmetric.console.service.impl.DesignService" />
+        
+    <bean id="metaDataService" 
+    	class="com.jumpmind.symmetric.console.service.impl.MetaDataService" />
+
+    <bean id="tableGroupService"
+    	class="com.jumpmind.symmetric.console.service.impl.TableGroupService"/>
+
+	<bean id="mailService"
+	    class="com.jumpmind.symmetric.console.service.impl.MailService"/>
+
+	<bean id="monitorService"
+		class = "com.jumpmind.symmetric.console.service.impl.MonitorService" />
+
+    <bean id="backgroundNoHangupService"
+        class="com.jumpmind.symmetric.console.service.impl.BackgroundNoHangupService" />
+
+	<bean id="proCacheManager"
+		class="com.jumpmind.symmetric.cache.ProCacheManager" />
+
+    <bean id="compareService" class="com.jumpmind.symmetric.console.service.impl.CompareService" />
+	
+	<bean id="dataRefreshService" class="com.jumpmind.symmetric.console.service.impl.ProDataRefreshService" />
+	
+	<bean id="tableGroupRouter" class="com.jumpmind.symmetric.route.TableGroupRouter"/>
+
+
+</beans>
