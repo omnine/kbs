@@ -58,7 +58,6 @@ insert into sym_node_group_link (source_node_group_id, target_node_group_id, dat
 -- (trigger_id,source_catalog_name, source_table_name,channel_id,last_update_time,create_time)
 -- values('log','dualshield','log','ds_ch2',current_timestamp,current_timestamp);
 -- separate the multiple tables with comma.
--- role is a simple table no reference
 insert into sym_trigger 
 (trigger_id,source_catalog_name, source_table_name,channel_id,last_update_time,create_time)
 values('rose','dualshield', 'role,report','rose',current_timestamp,current_timestamp);

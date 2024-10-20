@@ -167,6 +167,39 @@ Please note, the table definition is identical on each node, otherwise you may g
 
 truncate your `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See the details in [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/)
 
+## Performance Tuning
+
+You can adjust the following parameters for the performance.
+
+```
+# Batch size for data transfer
+transport.max.batch.size=5000
+
+# Commit rows in a single transaction
+commit.txn.count=500
+
+# Increase loader threads for parallel loading
+data.loader.thread.count=4
+
+# Frequency of data pushes to other nodes, Default 10 seconds
+job.push.period.time.ms=5000
+
+# Enable data compression during transfer
+transport.compression.enabled=true
+
+# Reduce network timeout
+http.read.timeout.ms=15000
+http.connect.timeout.ms=15000
+
+# Use multiple threads for push, pull, and routing
+job.push.thread.count=4
+job.pull.thread.count=4
+routing.job.thread.count=4
+
+# Enable connection pooling
+http.connection.pool.enabled=true
+
+```
 
 ## Questions
 
