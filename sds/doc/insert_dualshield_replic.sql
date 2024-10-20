@@ -12,8 +12,8 @@
 delete from sym_trigger_router;
 delete from sym_trigger;
 delete from sym_router;
--- there are a few system channels wich cannot be deleted
-delete from sym_channel where channel_id in ('ds_ch1', 'ds_ch2');
+-- there are a few system channels which cannot be deleted, delete the ones we defined early.
+delete from sym_channel where channel_id in ('rose', 'daisy');
 delete from sym_node_group_link;
 delete from sym_node_group;
 delete from sym_node_host;
@@ -25,15 +25,15 @@ delete from sym_node;
 -- Channels
 ------------------------------------------------------------------------------
 
--- Channel "General" for tables related to sales and refunds
+-- Channel "Critical" for tables related to sales and refunds
 insert into sym_channel 
 (channel_id, processing_order, max_batch_size, enabled, description)
-values('ds_ch1', 1, 100000, 1, 'General');
+values('rose', 1, 100000, 1, 'Critical');
 
 -- Channel "item" for tables related to logs and task and reports
 insert into sym_channel 
 (channel_id, processing_order, max_batch_size, enabled, description)
-values('ds_ch2', 1, 100000, 1, 'for logs and task and reports');
+values('daisy', 1, 100000, 1, 'for logs and task and reports');
 
 ------------------------------------------------------------------------------
 -- Node Groups
@@ -57,15 +57,15 @@ insert into sym_node_group_link (source_node_group_id, target_node_group_id, dat
 -- insert into sym_trigger 
 -- (trigger_id,source_catalog_name, source_table_name,channel_id,last_update_time,create_time)
 -- values('log','dualshield','log','ds_ch2',current_timestamp,current_timestamp);
-
+-- separate the multiple tables with comma.
 -- role is a simple table no reference
 insert into sym_trigger 
 (trigger_id,source_catalog_name, source_table_name,channel_id,last_update_time,create_time)
-values('role','dualshield', 'role','ds_ch1',current_timestamp,current_timestamp);
+values('rose','dualshield', 'role,report','rose',current_timestamp,current_timestamp);
 
 insert into sym_trigger 
 (trigger_id,source_catalog_name, source_table_name,channel_id,last_update_time,create_time)
-values('report','dualshield','report','ds_ch1',current_timestamp,current_timestamp);
+values('daisy','dualshield','author,book','daisy',current_timestamp,current_timestamp);
 
 ------------------------------------------------------------------------------
 -- Routers
@@ -85,13 +85,13 @@ values('master_2_master', 'master', 'master', 'default',current_timestamp, curre
 -- Send all items to all stores
 insert into sym_trigger_router 
 (trigger_id,router_id,initial_load_order,last_update_time,create_time)
-values('role','master_2_master', 100, current_timestamp, current_timestamp);
+values('rose','master_2_master', 100, current_timestamp, current_timestamp);
 
 
 -- Send all items to all stores
 insert into sym_trigger_router 
 (trigger_id,router_id,initial_load_order,last_update_time,create_time)
-values('report','master_2_master', 100, current_timestamp, current_timestamp);
+values('daisy','master_2_master', 100, current_timestamp, current_timestamp);
 
 
 
