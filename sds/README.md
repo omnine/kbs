@@ -165,7 +165,57 @@ Please note, the table definition is identical on each node, otherwise you may g
 
 ## The last resort for conflict
 
-truncate your `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See the details in [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/)
+Truncate your `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See the details in [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/)
+
+
+## Integration with DualShield
+
+- Clone **DS** (DualShield)  
+  Follow [How to clone a DualShield server onto a secondary machine for redundancy](https://wiki.deepnetsecurity.com/display/DualShield6/How+to+clone+a+DualShield+server+onto+a+secondary+machine+for+redundancy). 
+
+  Modify the `ini` file by adding the following, See the details at [Setting up a MySQL Replication Master](https://wiki.deepnetsecurity.com/display/DualShield6/Setting+up+a+MySQL+Replication+Master).   
+  ```
+  server-id=DS_1/DS_2/.../DS_N
+  auto_increment_increment=N
+  auto_increment_offset=1/2/.../N
+  ```  
+    
+  Make sure **DS** works on P<sub>1</sub> (Primary One) and C<sub>2-n</sub> (Cloned) individually. Don't worry the replication at this stage.
+
+- Install **SDS** (SymmetricDS)  
+  Follow the procedure above to configure it. Customize `sym_trigger` in [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) on the interested tables you are going to replicate.  but do not enable the triggers on the replication channels (`rose` and `daisy` in the example).
+  ```
+  insert into sym_trigger_router 
+        (trigger_id,router_id, enabled, initial_load_order,last_update_time,create_time)
+        values('rose','master_2_master', 0, 100, current_timestamp, current_timestamp);
+  ```
+  
+  Check the field `enabled` with,
+
+  `select trigger_id, router_id, enabled from sym_trigger_router;`
+
+- Stop **DS** service on C<sub>2-n</sub> machines.  
+  `net stop dualshield`
+
+- Export the database on P<sub>1</sub>  
+  `mysqldump -u root -p --single-transaction --opt DualShield > DualShield.sql`  
+  Follow the instruction at [Rebuild Replication](https://wiki.deepnetsecurity.com/display/DualShield6/Rebuild+Replication).
+
+- Enable triggers on P<sub>1</sub>,   
+  `update sym_trigger_router set enabled=1;`  
+  Then start **DS** service to make it back to work.  
+  `net start dualshield`
+
+- Import the database to C<sub>2-n</sub> machines,  
+  ```
+  mysql> drop database dualshield;
+  mysql> create database dualshield CHARACTER SET utf8 COLLATE utf8_general_ci;
+  ```
+  Enable the triggers on them, then start **DS** service.
+
+
+The replication among them should work. If not, find the root cause and repeat the stages above.
+
 
 ## Performance Tuning
 
@@ -236,6 +286,28 @@ auto.resolve.unique.index.violation
 ![alt text](./doc/sym-configure.png)  
 ![alt text](./doc/sym-explore.png)  
 
+
+
+###
+
+[Disabling Sync Triggers for Session](https://support.jumpmind.com/kb/article/23-Disabling_Sync_Triggers_for_Session)
+
+Disable the sync triggers:
+`set @sync_triggers_disabled = 1;`
+
+Enable the sync triggers:
+`set @sync_triggers_disabled = null;`
+
+Check whether sync triggers are disabled or not:
+`select @sync_triggers_disabled is null;`
+
+
+
+Generally you install DualShield on a machine, and then want to have HA.
+
+To minimize the downtime,
+
+- Install SymmetricDS, configure the channels and triggers etc, but not start the service.
 
 ## References
 
