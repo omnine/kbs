@@ -25,16 +25,16 @@ In this lab, `nano190013(192.168.190.13)` is also a node for registration.
 - Even though all nodes register through one node (`nano190013` in this case), they will start synchronizing data directly between them after registration.
 
 ## Configuration
-- Stop service on each node,
-`sudo ../bin/sym_service stop`
+- Stop service on each node, the command below is for Linux    
+  `sudo ../bin/sym_service stop`
 
-- Compose engine properties file for each node, you can use the sample ones as the templates.
+- Compose engine `properties` file for each node, you can use the sample ones as the templates.
 
-- Create the SymmetricDS tables. Replace the engine name with the actual one on the node  
+- Create the `SymmetricDS` tables. Replace the engine name with the actual one on the node  
 `../bin/symadmin --engine master-nano190013 create-sym-tables`
 
-- Copy [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) to each node. Please Modify it to satisfy your replication database/tables.  
-- Load the SymmetricDS configuration to apply to the database for replication. Replace the engine name with the actual one on the node  
+- Copy [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) to each node. Please modify it to satisfy your replication database / tables.  
+- Load the `SymmetricDS` configuration to apply to the database for replication. Replace the engine name with the actual one on the node  
 `..\bin\dbimport --engine master-nano190013 insert_dualshield_replic.sql`
 
 - Start service on each node,  
@@ -42,29 +42,24 @@ In this lab, `nano190013(192.168.190.13)` is also a node for registration.
 
 ## Common MySQL Replication Issues
 
-Error 1032 – Missing Records
+Error `1032` – Missing Records
 The error indicates that the master deletes a row but when the slave tries to do the same, it cannot find it in its database.
 
-Error 1062 – Duplicate Records
+Error `1062` – Duplicate Records
 Slave fails to replicate because of duplicate entry for the primary of the table.
 
-Error 1452 - trying to add or update a child row with a reference that doesn’t exist in the parent table. 
+Error `1452` - trying to add or update a child row with a reference that doesn’t exist in the parent table. 
 
 ## Scenarios
 ### Node temporarily down
 
-Node 1 (registration node) is down, change on Node 2 can be replicated to Node 3. Once Node 1 is back online, change is also replicated on it.
+Node 1 (even it is a registration node) is down. The changes on Node 2 can be still replicated to Node 3. Once Node 1 is back online, the changes will be also replicated to it.
 
 ### Delete a row which doesn't exist on target node
-Error 1032, The behavior: Target just ignored it. No corresponding row in the table `sym_incoming_error`.
+Error `1032`. The behavior: Target just ignored the query. No corresponding row in the table `sym_incoming_error`.
 
 ###  Update a row which doesn't exist on target node
-
-The behavior: a new row was inserted on the target node.
-
-
-
-
+The behavior: A new row was inserted on the target node.
 
 The corresponding `status` in the table `sym_incoming_batch` is `OK`,
 ---
@@ -73,32 +68,35 @@ The corresponding `status` in the table `sym_incoming_batch` is `OK`,
 | 1040 | nano190013 | ds_ch1 | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-19 10:30:43 | 2024-10-19 10:30:43 | role | 0 | 249 | 0 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 8 | 0 | 0 | -1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 
 
 ### Insert a row which its primary key does exist on target node.
-The behavior: handled as an `update` on target node.
+The behavior: Handled as an `update` on target node.
 
 
-### Error 1452
-INSERT INTO `book` (name, author_id) VALUES ('Prompt Engineer 2', 1);
-The `author_id` `1` didn't exist on target node,
+### Error `1452`
+This error will happen on the following query if the `author_id` `1` didn't exist on target node,
 
-sym_incoming_error
+`INSERT INTO book (name, author_id) VALUES ('Prompt Engineer 2', 1);`
+
+The behaviors:  
+in the table `sym_incoming_error`
 ---
 | batch_id | node_id | failed_row_number | failed_line_number | target_catalog_name | target_schema_name | target_table_name | event_type | binary_encoding | column_names | pk_column_names | row_data | old_data | cur_data | resolve_data | resolve_ignore | conflict_id | create_time | last_update_by | last_update_time | 
 | ---: | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- | --- | --- | 
 | 1645 | nano190013 | 1 | 1 | dualshield | \N | book | I | HEX | id,name,author_id | id | "4","Prompt Engineer 2","1" | \N | \N | \N | 0 | \N | 2024-10-20 06:26:36 | symmetricds | 2024-10-20 06:26:36 | 
 
-auto.resolve.foreign.key.violation
-If this is true, when a batch receives a foreign key violation, the missing data will be automatically sent to resolve it. The resolution is done at the source node by sending reload batches when it receives the acknowledgement of the batch error.
-
-Default: true
-
-sym_incoming_batch
+in the table `sym_incoming_batch`
 ---
 | batch_id | node_id | channel_id | status | error_flag | sql_state | sql_code | sql_message | last_update_hostname | last_update_time | create_time | summary | ignore_count | byte_count | load_flag | extract_count | sent_count | load_count | reload_row_count | other_row_count | data_row_count | extract_row_count | load_row_count | data_insert_row_count | data_update_row_count | data_delete_row_count | extract_insert_row_count | extract_update_row_count | extract_delete_row_count | load_insert_row_count | load_update_row_count | load_delete_row_count | network_millis | filter_millis | load_millis | router_millis | extract_millis | transform_extract_millis | transform_load_millis | load_id | common_flag | fallback_insert_count | fallback_update_count | conflict_win_count | conflict_lose_count | ignore_row_count | missing_delete_count | skip_count | failed_row_number | failed_line_number | failed_data_id | bulk_loader_flag | 
 | ---: | --- | --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | 
 | 1645 | nano190013 | daisy | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-20 06:26:46 | 2024-10-20 06:26:36 | book | 0 | 137 | 0 | 1 | 2 | 1 | 0 | 0 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 3 | 173 | 0 | 0 | 0 | -1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 
 | 1646 | nano190013 | reload | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-20 06:26:46 | 2024-10-20 06:26:46 | author | 0 | 89 | 0 | 1 | 1 | 0 | 1 | 0 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 4 | 0 | 7 | 0 | 0 | -1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 
 
-In this case, we can see the same exception in the log file,
+This is expected as weh have the default parameter on,
+
+`auto.resolve.foreign.key.violation`
+If this is true, when a batch receives a foreign key violation, the missing data will be automatically sent to resolve it. The resolution is done at the source node by sending reload batches when it receives the acknowledgement of the batch error.
+Default: `true`
+
+In this case, we saw the same exception in the log file,
 
 ```
 2024-10-20 11:39:28,438 INFO [master-nano190072] [DefaultDatabaseWriter] [master-nano190072-dataloader-8] Failed to process insert event in batch nano190013-1950 on channel 'daisy'.
@@ -143,7 +141,7 @@ Caused by: java.sql.SQLIntegrityConstraintViolationException: Cannot add or upda
         ... 16 more
 ```
 
-Please note, the table definition is identical on each node, otherwise you may get this error (I had `id BIGINT(20) NOT NULL AUTO_INCREMENT` on MySQL 5.7, but it was changed to `id BIGINT(19) NOT NULL AUTO_INCREMENT` on MySQL 8. Yes MySQL version is different, and hosted on different OS).
+Please note, the table definition is identical on each node, otherwise you may get this error (I had `id BIGINT(20) NOT NULL AUTO_INCREMENT` on MySQL 5.7, but it was changed to `id BIGINT(19) NOT NULL AUTO_INCREMENT` on MySQL 8. Yes, in my lab, MySQL version is different, and hosted on different OS).
 
 ```
 2024-10-20 11:39:34,352 INFO [master-nano190072] [RouterService] [master-nano190072-job-3] Routed 1 data events in 25 ms
@@ -157,15 +155,19 @@ Please note, the table definition is identical on each node, otherwise you may g
 2024-10-20 11:39:48,453 INFO [master-nano190072] [DataLoaderService] [qtp1046211253-19] 2 data and 1 batches loaded during push request from master:nano190013:nano190013
 2024-10-20 11:39:48,720 INFO [master-nano190072] [PushService] [master-nano190072-push-default-4] Push data sent to master:nano190013:nano190013
 2024-10-20 11:39:48,732 ERROR [master-nano190072] [AcknowledgeService] [master-nano190072-push-default-4] The outgoing batch nano190013-385 failed: Odd number of characters.
-
-
+```
+## auto.resolve
+Please check the default settings for the following violations,  
+```
+auto.resolve.foreign.key.violation
+auto.resolve.foreign.key.violation.delete
+auto.resolve.foreign.key.violation.reverse
+auto.resolve.primary.key.violation
+auto.resolve.unique.index.violation
 ```
 
-
-
 ## The last resort for conflict
-
-Truncate your `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See the details in [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/)
+In worst scenario, truncate your `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See the details in [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/)
 
 
 ## Integration with DualShield
@@ -256,7 +258,10 @@ http.connection.pool.enabled=true
 What these system channels do, `config, default,  dynamic,  heartbeat, monitor,  reload`, especially `config`?
 
 
-## Utility `dbcompare`
+## PRO Features
+The following are only available in Pro version,
+
+### Utility `dbcompare`
 
 It may not work between instances, as it need to specify the source and target engine properties file. However in Pro UI, I can select the remote node, but the comparison always in pending.
 
@@ -269,50 +274,19 @@ It may not work between instances, as it need to specify the source and target e
 
 ![alt text](./doc/cmp-tables.png)
 
-## auto.resolve
 
-```
-auto.resolve.foreign.key.violation
-auto.resolve.foreign.key.violation.delete
-auto.resolve.foreign.key.violation.reverse
-auto.resolve.primary.key.violation
-auto.resolve.unique.index.violation
-```
 
-## Pro WEB screenshots
+### Pro WEB screenshots
 ![Dashboard](./doc/sym-dashboard.png)  
 ![alt text](./doc/sym-manage.png)  
 ![alt text](./doc/sym-design.png)  
 ![alt text](./doc/sym-configure.png)  
 ![alt text](./doc/sym-explore.png)  
 
-
-
-###
-
-[Disabling Sync Triggers for Session](https://support.jumpmind.com/kb/article/23-Disabling_Sync_Triggers_for_Session)
-
-Disable the sync triggers:
-`set @sync_triggers_disabled = 1;`
-
-Enable the sync triggers:
-`set @sync_triggers_disabled = null;`
-
-Check whether sync triggers are disabled or not:
-`select @sync_triggers_disabled is null;`
-
-
-
-Generally you install DualShield on a machine, and then want to have HA.
-
-To minimize the downtime,
-
-- Install SymmetricDS, configure the channels and triggers etc, but not start the service.
-
 ## References
 
-https://stackoverflow.com/questions/78041207/how-to-change-locate-service-sym-tables-to-another-database 
-
 [Pausing Replication In SymmetricDS](https://www.jumpmind.com/blog/blog/how-to/pausing-replication-symmetricds/)  
-[Using Wildcards to Sync Database Tables](https://www.jumpmind.com/blog/blog/how-to/using-wildcards-sync-database/)
-[Stop Guessing if Your Data is Correct](https://www.jumpmind.com/blog/blog/how-to/stop-guessing-if-your-data-is-correct/)
+[Using Wildcards to Sync Database Tables](https://www.jumpmind.com/blog/blog/how-to/using-wildcards-sync-database/)  
+[Stop Guessing if Your Data is Correct](https://www.jumpmind.com/blog/blog/how-to/stop-guessing-if-your-data-is-correct/)  
+[Disabling Sync Triggers for Session](https://support.jumpmind.com/kb/article/23-Disabling_Sync_Triggers_for_Session)  
+https://stackoverflow.com/questions/78041207/how-to-change-locate-service-sym-tables-to-another-database 
