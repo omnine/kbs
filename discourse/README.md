@@ -1,24 +1,26 @@
 # Discourse installation
 
-Discourse only provides docker installation. It looks simple if the conditions are met.
+[Discourse](https://github.com/discourse/discourse) officially supports only Docker-based installation, which is relatively straightforward—provided your environment meets the expected conditions.
 
-My environment is different, I had HAProxy installed on the router (192.168.4.1), and using one public IP for multiple website domains(hosts). Discourse was installed on Ubuntu (192.168.4.5) with docker.
+In my case, the setup was a bit different. I had HAProxy running on my router at 192.168.4.1, managing a single public IP shared across multiple domains (virtual hosts). Discourse was installed on an Ubuntu server (192.168.4.5) using Docker.
 
-With the default installation, I knew letsencrypt certificate and port 443 won't work, but I thought htt should work if LAN DNS resolved `forum.mydomain.com` to `192.168.4.5`.
-The installation finished without any error, but telnet and curl failed.
+Knowing that the default setup wouldn’t work with Let’s Encrypt and port 443 due to my network architecture, I still expected HTTP access to function—assuming my local DNS resolved `forum.mydomain.com` to 192.168.4.5. The installation completed without any issues, but both `telnet` and `curl` tests failed.
 
-I came across these two articles.
-[How to install Discourse alongside Virtualmin](https://forum.virtualmin.com/t/how-to-install-discourse-alongside-virtualmin/124531)
-[Run other websites on the same machine as Discourse](https://meta.discourse.org/t/run-other-websites-on-the-same-machine-as-discourse/17247)
+I found the following articles helpful:
 
-I still thought I could do,
+- [How to install Discourse alongside Virtualmin](https://forum.virtualmin.com/t/how-to-install-discourse-alongside-virtualmin/124531)
+- [Run other websites on the same machine as Discourse](https://meta.discourse.org/t/run-other-websites-on-the-same-machine-as-discourse/17247)
+
+I initially tried exposing port 80 in the Docker container:
+
 ```
 expose
   - "80:80"
 ```
-Unfortunately the inner nginx (inside container, check the file, `/etc/nginx/conf.d/discourse.conf`) was still listening on the unix domain socket.
 
-OK, let us expose nothing and install an outside nginx, configure it as,
+However, the internal Nginx (within the container, configured via `/etc/nginx/conf.d/discourse.conf`) was still set to listen on a Unix domain socket, so that didn’t work.
+
+Instead, I opted not to expose any ports from the container and installed an external Nginx instance. I configured it like this:
 
 ```
 server {
@@ -36,9 +38,9 @@ server {
             
 ```
 
-Now both telnet and curl test worked.
+After making this change, both `telnet` and `curl` tests started working.
 
-It's time to config HAProxy
+The next step was configuring HAProxy:
 
 ```
 backend discourse_backend
@@ -51,7 +53,8 @@ backend discourse_backend
 
 ```
 
-Finally I can access it by https://forum.mydomain.com.
+With this setup in place, I was finally able to access Discourse via:
+https://forum.mydomain.com
 
 # References
 
