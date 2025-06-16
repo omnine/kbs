@@ -1,6 +1,6 @@
-# OpenID Connect
+# DualShield OpenID Connect
 
-The configuration with OIDC protocol can be very complicated. DualShield provides huge options you can fine grain. On the other end, it looks haunting. Let us look at some basic configurations which may cover most normal applications.
+The configuration with OIDC protocol can be very complicated. DualShield seems to have implemented a fully a  fully comprehensive OIDC, as it provides huge options you can tune. On the other end, it looks a bit haunting. Let us look at some basic configurations which may cover most normal applications.
 
 ## Redirect URI
 
@@ -10,7 +10,7 @@ This is provided by SP (service provider) which is called RP (relying party) in 
 
 ## Client ID and Secret
 This is as similar as the shared secret used in RADIUS.
-You can specify them or use the strong one prompted by Admin Console.
+You can specify them or use the strong one prompted by DualShield Admin Console.
 If SP is a Javascript or mobile application, you do not need a client secret.
 
 ## Scopes
@@ -32,34 +32,34 @@ The Authorization Code Flow is a most used one. If you want to learn other flows
 
 ## Playground
 
-[OpenID Connect Debugger](https://oidcdebugger.com/) is a very good playground for Authorization Code Flow.
+Let us see something with examples.
 
+- Username Passover
 
-## User Extraction
+When Entra EAM redirected to IDP, it posted the following values in form fields to `sso/v1/authc/oauth/connect/authorize`
 
-```
-POST https://demo.la.deepnetid.com/sso/v1/authc/oauth/connect/authorize HTTP/1.1
-Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
-Accept-Encoding: gzip, deflate, br, zstd
-Accept-Language: en-GB,en;q=0.9
-Cache-Control: max-age=0
-Connection: keep-alive
-Content-Length: 3250
-Content-Type: application/x-www-form-urlencoded
-Host: demo.la.deepnetid.com
-Origin: https://login.microsoftonline.com
-Referer: https://login.microsoftonline.com/
-Sec-Fetch-Dest: document
-Sec-Fetch-Mode: navigate
-Sec-Fetch-Site: cross-site
-Upgrade-Insecure-Requests: 1
-User-Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Mobile Safari/537.36
-sec-ch-ua: "Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"
-sec-ch-ua-mobile: ?1
-sec-ch-ua-platform: "Android"
+![alt text](image.png)
 
-scope=openid&response_mode=form_post&response_type=id_token&client_id=9f1a1f01760b465b81e48019c994a1cc&redirect_uri=https%3A%2F%2Flogin.microsoftonline.com%2Fcommon%2Ffederation%2Fexternalauthprovider&claims=%7B%22id_token%22%3A%7B%22amr%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%22face%22%2C%22fido%22%2C%22fpt%22%2C%22hwk%22%2C%22iris%22%2C%22otp%22%2C%22tel%22%2C%22pop%22%2C%22retina%22%2C%22sc%22%2C%22sms%22%2C%22swk%22%2C%22vbm%22%2C%22bio%22%5D%7D%2C%22acr%22%3A%7B%22essential%22%3Atrue%2C%22values%22%3A%5B%22possessionorinherence%22%5D%7D%7D%7D&nonce=AwABEgEAAAADAOz_BQD0_0jgLuZX4cvewUx4UX6STf_pwpfF5N6_rh6_QXCytA-snXesJP6PhfnmvgE2_Oub5GqVKCQKvULWYdgv4-B13RogAA&id_token_hint=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IkNOdjBPSTNSd3FsSEZFVm5hb01Bc2hDSDJYRSJ9.eyJhdWQiOiIzZGI1MDRmZi0xZmZjLTQ5NDQtODZmMy0zYTZkNjkzNjU2NmUiLCJpc3MiOiJodHRwczovL2xvZ2luLm1pY3Jvc29mdG9ubGluZS5jb20vODVhOGRhZjktMjk5Yy00NjJkLWE1MjctYWNmOTE2ZTgyNjU4L3YyLjAiLCJpYXQiOjE3NDg5NTI4NTcsIm5iZiI6MTc0ODk1Mjg1NywiZXhwIjoxNzQ4OTUzNzU3LCJlbWFpbCI6IjJmYUBsYS5kZWVwbmV0aWQuY29tIiwibmFtZSI6IjJGQSIsIm9pZCI6IjgwYjRjNzZjLWIyODYtNGMzMC04NjViLTE1MWM5ZTVmZmUyZSIsInByZWZlcnJlZF91c2VybmFtZSI6IjJmYUBsYS5kZWVwbmV0aWQuY29tIiwic3ViIjoiLWhHZnRDVmtwbUdKS3VUU3BocEdKTU03dGR4THpzZGVnZ09BTGZNV0FMQSIsInRpZCI6Ijg1YThkYWY5LTI5OWMtNDYyZC1hNTI3LWFjZjkxNmU4MjY1OCIsInV0aSI6IlVQMjI4bjBuUWtHQS02M1VzZmRVQUEiLCJ2ZXIiOiIyLjAifQ.XpowGz2aKdOTcxR9eEy7AmYU20EGtuvOkF6_lKoaSHsfLJRC3VCU2rjcWll8nOrvwzmDeo_Ha3iN6AO1DYoDWgPaMaJCHiJ1u5enbjOclW3cB8e_0daXk_LqmDrlT24KLdflIsU1_bz3f_7es3i8gLNy9vxEFmfULjElRRIywZ-EUODQxBfiZKEzlfYKvpFVaOLHnYbJE3YYPtUm6uOK74kMwvPeaKTLAqv0Bbmr6UP16n0UagBtsHMoyU_H-H-82oGWRKcV9JkyVaEKYNedv9y0cGXz_nTl7AsQdLgajZTfmOInn2lN35z31wcdwXJZOFRVdPtDODJ9fD7TvSNweg&client-request-id=81325af9-fa2f-48d1-98c6-69e08c7c4851&state=rQQIARAAjdQ_jNtUGADw5HK93lUcvVYVYryhQghw4j_PsX1SJZJL7PjOcezEjmMvkeN_eY7_JLZzTiwWmBgqKIihYmDoWDGgiqEqCwsMxwJiQ0KqEEPVAVWIoTCRK2Kv9PSkT_q-9-mTft-7cpmuElW0ir5Vwavo0U0LgAlAaQIhJhMUAYyFIRNA2QhDAYckrIntEtbJDoligECT61cO_jbw92v__NS5-z18fPu9jny__MY0y-bpUa02j5PMDKpmsUycqhWHtRR6EYxqMLKdVe1hufxjufykXL6_ldYJmgYkYBiMplGAgTpWFXGVEHExMEI1MzQdMwYoKhYGFDS-EDk900N21tPaRTfsw56mr3qtqW9wMiEqctYtpn73Il_xUEGZwm6rm4n4EIotjxR9cdotjOCXrau9xjKb4hdXnMDC-XNrz42TcDyP0-zzyqfbvbkT8fZxHEWOlVUv0pwog5aZwTiSknjuJBl00ls9NpLJYKlEOSIxLDHBUpGXuAhagjAbIPOG5Akqho1Zdzw-WfQgvsrHExel2JXIsV4QFEyiMxrBS2t_4VGG3tZmXKvp-xxp5b1A7ad1f0EJMWz0ln7_eEjSRS5kygCZLUZdU1KT5kkWKKnSHTEKzI91pRMDz0ixvK4ElB7wohKptgzh1OM4jM0tojXA-QBPPVOjJcQQyIFW7-mmA9ti39Zxa103JHQiCWDkRh3GwIwTWeyTYTuU4lOekvsmznLYwmziGiOwoQYBYvdkutlsihGW99k6AVKQzG0iltYFQEdFQwGNOmGvusej1rTAhoP5MrfZAYbyY9GOUYoSBA6oTmPtKJo6CMgzup8aDNv2Qiq3pOZkZI_01JJQcVgEbd9tu74_CdLZoKUfj8Oh0VTCs7iZrdgZBU-UuTQQvFwOMZTLu6xCk2fjMdJcyUJQ50GEpRjrtkXTRd3gTHRO2SywVE9tW_7GB5vEEpj2Gx12fNZtW8ngVFa9leCfBg6lLvv9pqLS-v3Kzf9th2Zkek64EbGRveGdb1DHeVqNnKz2oLIfJ54ZweKFlfRR5SaKkhZqMgxSB-4EwUkcR4BDuQjFUHXSJhh3QoHzivAyr9eWqZOMYbjxl8bRiw6HG4wRtA-d0ITB4TyJXRg4v1Vu4K75bmBWbceZbyqhfbGEP26Xn26_trt7UHm9dFh68wZaOdrdvXJQuoieb5fvXdrsNHnp6x-0ykeNbzDjwf7vn5TOL9XYhu2JaKY21ka6ToakeOp40FrP6Kam87OhNSUSLohojZO9W8QRdmenfGdn53xnj2-NxbYCKPzZztaHl8uP9l7yd_jglf3d0vW9vc-uf_Hd3Xu_dr7dLz1_9eO_Hn55--cnf3TOrx60_hvqcOBYywRm66dX32FOZwt9mvBvr23cFc9UbyA5nCewHU_ziIz2OUGOwow3Fifg1lcHpcebc6307Fr5-bU7W_8C0
-```
+The username is in the form field `id_token_hint`,
+
+![alt text](image-1.png)
+
+For Entra EAM, DualShield use `oid`. Please read [Create a SSO service provider in DualShield for EAM integration](https://wiki.deepnetsecurity.com/display/DualShield6/Create+a+SSO+service+provider+in+DualShield+for+EAM+integration) for how the username is extracted. 
+
+>The immutable identifier for an object (`oid`) in the Microsoft identity system, in this case, a user account. This ID uniquely identifies the user across applications - two different applications signing in the same user will receive the same value in the oid claim. The Microsoft Graph will return this ID as the id property for a given user account. Because the oid allows multiple apps to correlate users, the profile scope is required in order to receive this claim. Note that if a single user exists in multiple tenants, the user will contain a different object ID in each tenant - they are considered different accounts, even though the user logs into each account with the same credentials.
+
+- Discovery Endpoint
+A proper OIDC provider should provide a Discovery URL.
+DualShield, `/sso/v1/authc/oauth/.well-known/openid-configuration`. If you access it with a browser you should get a json result.
+
+The json contains a few important values like `issuer`, `authorization_endpoint`, `token_endpoint`.
+
+[OpenID Connect Debugger](https://oidcdebugger.com/) is a very good playground for Authorization Code Flow. it required `authorization_endpoint`.
+
+![alt text](image-2.png)
+
+In this screenshot, we also see Redirect URI, Client ID, Scope etc.
+
 
 ## References
 
