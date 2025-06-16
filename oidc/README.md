@@ -58,7 +58,7 @@ Accessing this URL returns a JSON object with important values such as `issuer`,
 
 ## References
 
-- [What is OIDC?](https://www.microsoft.com/en-gb/security/business/security-101/what-is-openid-connect-oidc?ef_id=_k_Cj0KCQjw0qTCBhCmARIsAAj8C4ZpkyaY1eHua-kW1BLmi5-Dgxut2uYJoqlCreeZdRAND8k43T17BrkaAkkmEALw_wcB_k_&OCID=AIDcmmao55x8o7_SEM__k_Cj0KCQjw0qTCBhCmARIsAAj8C4ZpkyaY1eHua-kW1BLmi5-Dgxut2uYJoqlCreeZdRAND8k43T17BrkaAkkmEALw_wcB_k_&gad_source=1&gad_campaignid=21210150911&gbraid=0AAAAADcJh_vYTm2E8BumMbbQFpCEvj_Z_&gclid=Cj0KCQjw0qTCBhCmARIsAAj8C4ZpkyaY1eHua-kW1BLmi5-Dgxut2uYJoqlCreeZdRAND8k43T17BrkaAkkmEALw_wcB)
+- [What is OIDC?](https://www.microsoft.com/en-gb/security/business/security-101/what-is-openid-connect-oidc)
 - [Diagrams of All The OpenID Connect Flows](https://darutk.medium.com/diagrams-of-all-the-openid-connect-flows-6968e3990660)
 - [Authorization Code Flow](https://auth0.com/docs/get-started/authentication-and-authorization-flow#authorization-code-flow)
 - [OAuth Client Secret Authentication](https://docs.secureauth.com/ciam/en/oauth-client-secret-authentication.html)
