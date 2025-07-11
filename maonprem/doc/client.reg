@@ -1,0 +1,10 @@
+Windows Registry Editor Version 5.00
+
+; Replace 'exchange4all.local' with the customer's ADFS domain
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AAD\AuthTrustedDomains\https://adfs.bletchley19.com/]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\AAD\AuthTrustedDomains\https://adfs.bletchley19.com]
+
+; Enable Modern Auth via ADFS in Outlook on Windows
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Common\Identity]
+"EnableExchangeOnPremModernAuth"=dword:00000001
