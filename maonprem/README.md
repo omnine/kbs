@@ -3,6 +3,9 @@ I was recently asked to experiment with enabling Modern Authentication in Exchan
 
 The steps involving **Exchange Server** and **AD FS** are quite clear and straightforward.
 
+## Certificates
+I used [KeyStore Explorer](https://keystore-explorer.org/downloads.html) to generate the certificates, [How to renew certificate with KeyStore Explorer](https://github.com/omnine/kbs/blob/main/kerecer/README.md) may help.
+
 ## Outlook
 I encountered some challenges with the Outlook client version. Initially, I assumed the latest version from the Microsoft Store would suffice. However, it consistently attempted to connect to an Office 365 account—even though it claims to support both Office 365 and Exchange, which I believe refers more to Hybrid Exchange environments.
 
