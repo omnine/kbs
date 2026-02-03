@@ -184,3 +184,52 @@ If you deploy often, consider:
 - Keeping a “golden” VM template and cloning
 - Using Palo Alto **bootstrap** configuration to automate initial config
 
+# GlobalProtect Portal
+
+## 1) Goal and Prerequisites
+
+**Goal**: Configure GlobalProtect on an interface (e.g., `192.168.190.21`) in the same subnet as Management (`192.168.190.20`) to test RADIUS authentication.
+
+**Prerequisites**:
+- A running RADIUS server reachable by the Firewall.
+- Access to proper hypervisor networking to put connection `ethernet1/1` on the same bridge as `Management`.
+
+## 2) Quick Setup Steps
+
+### Step 1: Certificate (Self-Signed)
+GlobalProtect requires SSL.
+
+1.  **Device > Certificate Management > Certificates**.
+2.  Generate a **Root CA** (Name: `Root-CA`, Common Name: `Root-CA`, CA: `Yes`).
+3.  Generate a **Server Cert** (Name: `GP-Cert`, Common Name: `192.168.190.21`, Signed By: `Root-CA`).
+4.  **Device > Certificate Management > SSL/TLS Service Profile**.
+5.  Create `GP-SSL-Profile` referencing `GP-Cert`.
+
+### Step 2: Network Interface
+1.  **Network > Interfaces > Ethernet > ethernet1/1**.
+2.  **Interface Type**: `Layer3`.
+3.  **Config Tab**: Assign to default **Virtual Router** and a **Security Zone** (e.g., `Untrust`).
+4.  **IPv4 Tab**: add `192.168.190.21/24`.
+5.  **Advanced Tab > Management Profile**: Create/Select one enabling `Ping` (to verify connectivity).
+
+### Step 3: RADIUS & Auth Profile
+1.  **Device > Server Profiles > RADIUS**: Add your RADIUS server IP and Shared Secret.
+2.  **Device > Authentication Profile**: Create `GP-RADIUS-Auth`, type `RADIUS`, select your Server Profile. Add `all` to Allow List.
+
+### Step 4: Portal & Gateway
+**Portal**:
+1.  **Network > GlobalProtect > Portals > Add**.
+2.  **General**: Interface `ethernet1/1` (`192.168.190.21`).
+3.  **Authentication**: Use `GP-SSL-Profile` and Add Client Auth sending to `GP-RADIUS-Auth`.
+4.  **Agent**: Configure generic Agent settings. Add `External Gateway` pointing to `192.168.190.21`.
+
+**Gateway**:
+1.  **Network > GlobalProtect > Gateways > Add**.
+2.  **General**: Interface `ethernet1/1` (`192.168.190.21`).
+3.  **Authentication**: Use `GP-SSL-Profile` and Add Client Auth sending to `GP-RADIUS-Auth`.
+4.  **Agent > Tunnel Settings**: Check Tunnel Mode. Assign IP Pool (e.g., `172.16.10.1-172.16.10.20`).
+
+### Step 5: Commit & Test
+1.  **Commit**.
+2.  Test login via `https://192.168.190.21` or GlobalProtect Agent.
+3.  Check **Monitor > Logs > System** (for Radius server-level errors) or **GlobalProtect** logs.
