@@ -1,105 +1,109 @@
-# How to renew certificate with KeyStore Explorer
+# How to Renew a Certificate with KeyStore Explorer
 
-Online security relies on certificate.
-Certificate renewal is still a challenge for many people, even for the IT admin in some companies.
-There are a lot of tools you can use. Here I am going to use [KeyStore Explorer](https://keystore-explorer.org/downloads.html).
+Online security depends on certificates, yet certificate renewal remains a challenge for many people — including IT administrators at some organizations.
+There are many tools available for this task. This guide uses [KeyStore Explorer](https://keystore-explorer.org/downloads.html).
 
-## Nutshell
+## Quick Summary
 
-- Generate Key Pair  
+- Generate a Key Pair  
   ![menu key pair](./docs/menu-key-pair.png)  
-  You can use default options, apart from specifying the web server FQDN.
-  ![Alt text](./docs/image-8.png)  
-  Also, use the **Standard Sever Template** when adding the extension.  
+  Default options are fine, except you must specify the web server's FQDN.  
+  ![Alt text](./docs/image-8.png)
+  When adding the extension, use the **Standard Server Template**.  
   ![Alt text](./docs/image-9.png)
-- Generate CSR  
-  ![Alt text](./docs/image-10.png)  
-- Send the *csr* file or its content to public CA, like `GeoTrust, Comodo, DigiCert, Thawte, GoDaddy, SSL.com`. You can buy  a certificate from them.
-- Import CA Reply  
-  ![Alt text](./docs/image-11.png)  
+- Generate a CSR  
+  ![Alt text](./docs/image-10.png)
+- Submit the CSR file (or its contents) to a public CA such as `GeoTrust`, `Comodo`, `DigiCert`, `Thawte`, `GoDaddy`, or `SSL.com` to purchase a certificate.
+- Import the CA Reply  
+  ![Alt text](./docs/image-11.png)
 - Save the entry as a PFX file.
 
 ## Advanced
 
-Let us talk about the details.  
-The certificate (here I am talking about digital certificate), is a part of PKI, [Public key infrastructure](https://en.wikipedia.org/wiki/Public_key_infrastructure).
+Let's walk through the details.
+
+A digital certificate is a component of PKI ([Public Key Infrastructure](https://en.wikipedia.org/wiki/Public_key_infrastructure)).
 
 ![Asymmetric](https://sectigostore.com/blog/wp-content/uploads/2020/11/asymmetric-encryption.png)
 
-Mathematically, the keys are related to the prime numbers. I copied the following from [Why are primes important in cryptography?](https://stackoverflow.com/questions/439870/why-are-primes-important-in-cryptography)  
+Mathematically, the keys are tied to prime numbers. The following explanation is quoted from [Why are primes important in cryptography?](https://stackoverflow.com/questions/439870/why-are-primes-important-in-cryptography):
+
 > Most basic and general explanation: cryptography is all about number theory, and all integer numbers (except 0 and 1) are made up of primes, so you deal with primes a lot in number theory.
 
 > More specifically, some important cryptographic algorithms such as RSA critically depend on the fact that prime factorization of large numbers takes a long time. Basically you have a "public key" consisting of a product of two large primes used to encrypt a message, and a "secret key" consisting of those two primes used to decrypt the message. You can make the public key public, and everyone can use it to encrypt messages to you, but only you know the prime factors and can decrypt the messages. Everyone else would have to factor the number, which takes too long to be practical, given the current state of the art of number theory.
 
-Where is the certificate? You may argue there is no certificate in the above flow chart where only the private and public keys are involved.
+Looking at the flow chart above, you might notice it only shows private and public keys — no certificate. So where does the certificate fit in?
 
-As the name suggests, the public key is for public, so you need to publish it. You have many ways to do that, but how can you convince other people to trust it?
+As the name implies, a public key is meant to be shared publicly. But simply publishing it raises a question: how can others be sure they can trust it?
 
-The certificate comes to rescue.
+That is where certificates come in.
 
-Here we need an authority, CA (**Certificate Authority**), whom you and the public all trust on. CA creates a signature on your public key and the related information, like your CN, make them unalterable.
+We need a trusted authority — a CA (**Certificate Authority**) — that both you and the public recognize. The CA creates a signature over your public key and associated information (such as your CN), making that data tamper-evident.
 
-`signature = encryption with CA's private key on the hash of your public key plus CN etc`
+`signature = encryption with CA's private key on the hash of (your public key + CN + other info)`
 
-**A certificate is a combination of your public key and your additional information and the signature issued from the authority.**
+**A certificate is your public key combined with your identifying information, signed by a trusted authority.**
 
-Everyone can use CA's public key to verify if your certificate is tampered.
+Anyone can use the CA's public key to verify that your certificate has not been altered.
 
-There are a few types of certificate. In this article I use web server certificate as an example. If you are an owner of web site, and you want to make it secure, then you need a certificate.
+There are several types of certificates. This guide uses a web server certificate as the example. If you own a website and want to secure it with HTTPS, you need one.
 
 
-### Generate key pair
+### Generate a Key Pair
 
-Now you know this is the first thing we need to do, which we saw in [Nutshell](#nutshell).  
-For your convenience, KeyStore Explorer also generates a self-sign certificate (Issuer == Subject) in this step. 
+As shown in [Quick Summary](#quick-summary), this is the first step.
+
+For convenience, KeyStore Explorer also generates a self-signed certificate (Issuer == Subject) during this step.
 
 ![Alt text](./docs/image-12.png)
 
-This is why you need to fill in the information like CN etc, which is for certificate only. In theory you don't need it for generating the private/public key pair. 
+This is why you fill in information such as the CN — that information is for the certificate, not for the key pair itself. Technically, the private/public key pair can be generated without it.
 
-You also need to specify the certificate usage by adding the extensions. 
+You also need to define the certificate's intended usage by adding extensions.
 
 ![Alt text](./docs/image-2.png)
 
 
-### Generate CSR
+### Generate a CSR
 
-Once we have got the key pair, we can generate CSR (Certificate Signing Request), it is very easy as you have seen in Nutshell part.
+Once you have the key pair, generating a CSR (Certificate Signing Request) is straightforward, as shown in the Quick Summary.
 
 ![Alt text](./docs/image.png)
 
+You might wonder what a CSR actually contains:
 
-You may wonder what information the CSR contains? 
+`CSR = your public key + your identifying information + a signature made with your private key`
 
-`CSR = the combination of your public key and your additional information and the signature issued with your private key.`
+You can inspect the contents using a [CSR Decoder And Certificate Decoder](https://certlogik.com/decoder/).
 
-You can decode it with [CSR Decoder And Certificate Decoder](https://certlogik.com/decoder/).
+Submit the CSR to a public CA or an internal CA (such as a Microsoft CA). In return, you will receive a signed certificate.
 
-Now you can submit the CSR to CA, or your organization CA server, like Microsoft CA. You will be issued a certificate.
+`Certificate = your public key + your identifying information + a signature made with the CA's private key`
 
-`Certificate = the combination of your public key and your additional information and the signature issued with CA private key.`
+The key difference between a CSR and a certificate is the signature: the CSR is self-signed with your private key, while the certificate is signed by the CA.
 
-You should be able to tell the difference between the certificate and the CSR.
+### Sign a CSR
+Signing is the CA's responsibility — feel free to skip this section if you are not interested. The CA issues a certificate based on your CSR.
 
-### Sign CSR
-This is purely a job of CA, you can skip this part if you are not interested in. CA will issue you a certificate based on your CSR.  
-KeyStore Explorer can simulate this job, if you have a dummy CA key pair.  
-![Alt text](./docs/image-1.png)  
-Provide the CSR file or its content  
+KeyStore Explorer can simulate this process if you have a test CA key pair.  
+![Alt text](./docs/image-1.png)
+Provide the CSR file or paste its contents:  
 ![Alt text](./docs/image-3.png)  
-Save the generated certificate  
+Save the generated certificate:  
 ![Alt text](./docs/image-5.png)
 
-### Completion
-Are we able to use the certificate (`.cer`) issued by CA on your web server? Unfortunately not. Remember? it doesn't contain the private key!  
-We need to combine it with the original private key at your side.  
-![Import CA Reply](./docs/image-6.png)  
-Now check the certificate chain, it is not self-signed anymore. the CA is on the top of the tree.  
+### Completing the Certificate
+Can you use the `.cer` file issued by the CA directly on your web server? Not yet — it contains only the public key, not the private key.
+
+You need to combine it with the private key that was generated on your side.
+![Import CA Reply](./docs/image-6.png)
+
+Now inspect the certificate chain — it is no longer self-signed. The CA appears at the top of the chain.
 ![Alt text](./docs/image-7.png)
 
-You have a full certificate now, containing private key and public key and also a certificate issued by a CA.
+You now have a complete certificate entry containing the private key, the public key, and the CA-signed certificate.
 
-This certificate can be used on your web server.
+This can be deployed directly to your web server.
 
 ## References
 
