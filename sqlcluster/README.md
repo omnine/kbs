@@ -1,73 +1,74 @@
-# Build a LAB of SQL Server Failover Cluster in ESXi
+# Build a SQL Server Failover Cluster Lab in ESXi
 
-It should be easy if you follow the 1-4 **Step-by-step Installation of SQL Server 2019 on a Windows Server 2019 Failover Cluster**. The main challenge is how to provide the shared disks. Luckily this link, [Build and run Windows Failover Clusters on VMware ESXi](https://www.vkernel.ro/blog/build-and-run-windows-failover-clusters-on-vmware-esxi), is very helpful.
+Following parts 1–4 of the **Step-by-step Installation of SQL Server 2019 on a Windows Server 2019 Failover Cluster** guide is straightforward. The main challenge is providing shared disks. Fortunately, [Build and run Windows Failover Clusters on VMware ESXi](https://www.vkernel.ro/blog/build-and-run-windows-failover-clusters-on-vmware-esxi) covers this very well.
 
 
 
-## LAB
+## Lab Environment
 
 |Node 1 | Node 2 |
 | --- | --- |
 |192.168.190.30|192.168.190.31|
 
-SQL Server `VIP` is configured on `192.168.190.206`.
+The SQL Server `VIP` is configured at `192.168.190.206`.
 
-We installed DualShield as a client on Node 3, `192.168.190.54`.
+DualShield is installed as a client on Node 3 at `192.168.190.54`.
 
 
 ## Important Installation Steps
 
-It is important to make both Node 1 and 2 have the same OS and its update. I had this very strange problem due to Windows Update failure with error `0x800f0986`.  
+Both Node 1 and Node 2 must run the same OS version with identical updates applied. I encountered a strange failure caused by a Windows Update error `0x800f0986`.  
 ![node_rule_failed](./doc/node_rule_failed.png)
 
-If you are unlucky like me, then try this solution `DISM.exe /Online /Cleanup-Image /RestoreHealth /Source:"\HealthyMachine\C$\Windows" /LimitAccess`
+If you run into the same issue, try this command:
+`DISM.exe /Online /Cleanup-Image /RestoreHealth /Source:"\HealthyMachine\C$\Windows" /LimitAccess`
 
-Now it is time to create a shared disk in `Node 1`. I had to create a SCSI controller for it.  
+Next, create a shared disk on `Node 1`. This requires adding a new SCSI controller.
 ![shared_disk](./doc/shared_disk.png)
 
-For `Node 2`, do the same thing, apart from when `Add hard disk`, choose `Existing hard disk`.  
+For `Node 2`, follow the same steps, except when adding the hard disk, select `Existing hard disk`.  
 ![existing_diskt](./doc/existing_disk.png)
 
-Then open `Computer Management` to bring this new disk online and assign it a driver letter.
+Then open `Computer Management` to bring the new disk online and assign it a drive letter.
 ![disk_management](./doc/disk_management.png)
 
-Now you can install the failover cluster feature in **Server Manager**.
-You should be able to add this disk,  
+Install the failover cluster feature in **Server Manager**.
+You should then be able to add the shared disk to the cluster.
 ![disk_in_cluster](./doc/disk_in_cluster.png)
 
-Please validate the cluster before installing SQL Server one each node.  
+Validate the cluster before installing SQL Server on each node.
 ![validate_cluster](./doc/validate_cluster.png)
 
-On the first node, choose `New SQL server failover cluster installation`. On the other nodes, `Add node to a SQL server failover cluster`.  
+On the first node, select `New SQL Server failover cluster installation`. On additional nodes, select `Add node to a SQL Server failover cluster`.  
 ![node_status](./doc/node_status.png)
 
 # Test
 
-You can double check the `VIP` here.  
+Verify the `VIP` configuration here.  
 ![sql_vip](./doc/sql_vip.png)
 
-Here you can check which node is active.  
+Check which node is currently active.
 ![sql_services](./doc/sql_services.png)
 
-We can simulate the swap by,  
+A failover can be triggered manually here.
 ![failover_disk](./doc/failover_swap.png)
 
 ## Real Example
 
-`DualShield` server(service) is installed on a VM with IP `192.168.190.54` (Node 3).
+The `DualShield` service is installed on a VM at `192.168.190.54` (Node 3).
 
-Its `server.xml` has this part,  
+Its `server.xml` contains the following connection entry:
 
 ```
-    <Resource driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver" 
-     factory="com.deepnet.dualshield.encryption.EncryptedDataSourceFactory" 
+    <Resource driverClassName="com.microsoft.sqlserver.jdbc.SQLServerDriver"
+     factory="com.deepnet.dualshield.encryption.EncryptedDataSourceFactory"
      testOnBorrow="true" maxActive="200" maxIdle="10" minIdle="5"
-     name="jdbc/DasDS" password="xxxxxxxx" 
-     type="javax.sql.DataSource" url="jdbc:sqlserver://NCN1.bletchley19.com:1433;encrypt=true;trustServerCertificate=true;DatabaseName=dualshield;SelectMethod=cursor;" 
+     name="jdbc/DasDS" password="xxxxxxxx"
+     type="javax.sql.DataSource" url="jdbc:sqlserver://NCN1.bletchley19.com:1433;encrypt=true;trustServerCertificate=true;DatabaseName=dualshield;SelectMethod=cursor;"
      username="sa" validationQuery="Select 1"/>
 ```
 
-The `ping` result done on Node 3 confirmed the `VIP`, `192.168.190.206`
+A `ping` from Node 3 confirms that the hostname resolves to the `VIP`, `192.168.190.206`:
 
 ```
 C:\Users\Administrator>ping NCN1.bletchley19.com
@@ -78,11 +79,11 @@ Reply from 192.168.190.206: bytes=32 time<1ms TTL=128
 Reply from 192.168.190.206: bytes=32 time<1ms TTL=128
 ```
 
-You may wonder which actual machine Node 3 would connect to for SQL resource on the cluster? A very good question.
+You might wonder which physical machine Node 3 actually connects to when accessing SQL Server through the VIP.
 
-**OS uses `MAC` to find the destination machine.**
+**The OS uses the `MAC` address to identify the destination machine.**
 
-On Node 3, run the following `arp` command,
+On Node 3, run the following `arp` command:
 
 ```
 C:\Users\Administrator>arp -a 192.168.190.206
@@ -91,11 +92,11 @@ Interface: 192.168.190.54 --- 0x5
   Internet Address      Physical Address      Type
   192.168.190.206       00-0c-29-ff-2e-56     dynamic
 ```
-Pay attention to the `Physical Address`, which is a `MAC` address.
+Note the `Physical Address` — this is the `MAC` address of the currently active node.
 
-**NOTE**: if the `arp` result is empty, please consult with your network engineer.
+**NOTE**: If the `arp` result is empty, consult your network engineer.
 
-Now check the MAC addresses on both Node 1 and 2, with the command `ipconfig /all` (run it on 1 and 2)
+Now check the MAC addresses on both Node 1 and Node 2 using `ipconfig /all`:
 
 Node 1
 ```
@@ -131,13 +132,13 @@ Node 2
    NetBIOS over Tcpip. . . . . . . . : Enabled
 ```
 
-As you can see, the destination was Node 1, `192.168.190.30`, which was the active node.
+The MAC address `00-0C-29-FF-2E-56` matches Node 1 (`192.168.190.30`), confirming it is the active node.
 
-Now let us swap the active node to Node 2.
+Now trigger a failover to make Node 2 active.
 
-Make sure you see Node 2 became active in **SQL Server Configuration Manager**.
+Confirm in **SQL Server Configuration Manager** that Node 2 is now active.
 
-Then go back to Node 3, run the `arp` command again,
+Then return to Node 3 and run the `arp` command again:
 
 ```
 C:\Users\Administrator>arp -a 192.168.190.206
@@ -147,12 +148,11 @@ Interface: 192.168.190.54 --- 0x5
   192.168.190.206       00-0c-29-19-d0-3e     dynamic
 ```
 
-This time the same VIP was resolved to Node 2!
+The same VIP now resolves to Node 2's MAC address.
 
-You can access DualShield Admin Console, see if it still works.
+Open the DualShield Admin Console and verify that it is still functioning normally.
 
-You can double check it with Wireshark to monitor the traffic on `tcp port 1433`.
-
+You can also confirm the active connection using Wireshark to capture traffic on `tcp port 1433`.
 ![traffic_port_1433](./doc/port_1433.png)
 
 
