@@ -1,4 +1,4 @@
-# Use SymmetricDS to do master-master replication on MySQL database
+# Master-Master MySQL Replication with SymmetricDS
 
 ## Lab
 
@@ -11,89 +11,93 @@
 | nano190072 (3) | 3.15.8 | MySQL | 8.0 | Ubuntu 24.04 | [nano190072.properties](doc/master-nano190072.properties) |
 
 
-In this lab, `nano190013(192.168.190.13)` is also a node for registration. 
+In this lab, `nano190013` (`192.168.190.13`) also serves as the registration node.
 
-### Flexibility with registration.url:
-- The registration.url can point to any node for the initial registration. After registration, the node topology and synchronization mechanism are established, and they can communicate with each other through the individual sync.url values.
-- If one of the nodes (like Node 1) goes down temporarily, the system will still function because synchronization happens over the sync.url, not the registration.url. The registration.url is only used once during the initial registration phase.
+### Flexibility of registration.url
+- The `registration.url` can point to any node for initial registration. Once registration is complete, the node topology and synchronization are established, and nodes communicate with each other directly via their individual `sync.url` values.
+- If one node (such as Node 1) goes down temporarily, the system continues to function because synchronization uses `sync.url`, not `registration.url`. The `registration.url` is only needed once, during the initial registration phase.
+
 ### What Happens When a New Node Joins Later?
-- If you add a fourth node, it can register using the same registration.url, which would again point to Node 1. Once it registers, Node 1 will propagate the new node's details to the other nodes, and synchronization will begin.
-- The new node will become aware of all other nodes (Nodes 1, 2, and 3), and it will be included in the multi-master replication group.
-### Summary 
-- The `registration.url` is crucial for initial registration and for making nodes aware of each other.
-- Once registration is complete, the nodes communicate and synchronize directly using their own `sync.url`.
-- Even though all nodes register through one node (`nano190013` in this case), they will start synchronizing data directly between them after registration.
+- A new node can register using the same `registration.url`, pointing to Node 1. After registration, Node 1 propagates the new node's details to all other nodes, and synchronization begins.
+- The new node becomes aware of all existing nodes (Nodes 1, 2, and 3) and is included in the multi-master replication group.
+
+### Summary
+- The `registration.url` is only used for initial registration and for making nodes aware of each other.
+- After registration, nodes communicate and synchronize directly using their own `sync.url`.
+- Although all nodes register through a single node (`nano190013` in this case), they synchronize data directly with each other once registration is complete.
 
 ## Configuration
-- Stop service on each node, the command below is for Linux    
+- Stop the service on each node. The command below is for Linux:
   `sudo ../bin/sym_service stop`
 
-- Compose engine `properties` file for each node, you can use the sample ones as the templates.
+- Create an engine `properties` file for each node. The sample files in this repository can be used as templates.
 
-- Create the `SymmetricDS` tables. Replace the engine name with the actual one on the node  
-`../bin/symadmin --engine master-nano190013 create-sym-tables`
+- Create the `SymmetricDS` tables. Replace the engine name with the actual name for the node:
+  `../bin/symadmin --engine master-nano190013 create-sym-tables`
 
-- Copy [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) to each node. Please modify it to satisfy your replication database / tables.  
-- Load the `SymmetricDS` configuration to apply to the database for replication. Replace the engine name with the actual one on the node  
-`..\bin\dbimport --engine master-nano190013 insert_dualshield_replic.sql`
+- Copy [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) to each node and modify it to match your replication database and tables.
 
-- Start service on each node,  
-`sudo ../bin/sym_service start`
+- Load the `SymmetricDS` configuration into the database. Replace the engine name with the actual name for the node:
+  `..\bin\dbimport --engine master-nano190013 insert_dualshield_replic.sql`
+
+- Start the service on each node:
+  `sudo ../bin/sym_service start`
 
 ## Common MySQL Replication Issues
 
-Error `1032` – Missing Records
-The error indicates that the master deletes a row but when the slave tries to do the same, it cannot find it in its database.
+**Error `1032` – Missing Records**
+The source node deleted a row, but the target node cannot find it to apply the same deletion.
 
-Error `1062` – Duplicate Records
-Slave fails to replicate because of duplicate entry for the primary of the table.
+**Error `1062` – Duplicate Records**
+The target node fails to replicate an insert because a row with the same primary key already exists.
 
-Error `1452` - trying to add or update a child row with a reference that doesn’t exist in the parent table. 
+**Error `1452` – Foreign Key Violation**
+An attempt to insert or update a child row fails because the referenced parent row does not exist on the target node.
 
 ## Scenarios
-### Node temporarily down
+### Node Temporarily Down
 
-Node 1 (even it is a registration node) is down. The changes on Node 2 can be still replicated to Node 3. Once Node 1 is back online, the changes will be also replicated to it.
+If Node 1 (even as the registration node) goes offline, changes on Node 2 are still replicated to Node 3. Once Node 1 comes back online, it receives all pending changes automatically.
 
-### Delete a row which doesn't exist on target node
-Error `1032`. The behavior: Target just ignored the query. No corresponding row in the table `sym_incoming_error`.
+### Delete a Row That Does Not Exist on the Target Node
+This triggers Error `1032`. The target node silently ignores the operation — no record appears in the `sym_incoming_error` table.
 
-###  Update a row which doesn't exist on target node
-The behavior: A new row was inserted on the target node.
+### Update a Row That Does Not Exist on the Target Node
+The target node inserts the row instead of updating it.
 
-The corresponding `status` in the table `sym_incoming_batch` is `OK`,
+The corresponding `status` in the table `sym_incoming_batch` is `OK`:
 ---
-| batch_id | node_id | channel_id | status | error_flag | sql_state | sql_code | sql_message | last_update_hostname | last_update_time | create_time | summary | ignore_count | byte_count | load_flag | extract_count | sent_count | load_count | reload_row_count | other_row_count | data_row_count | extract_row_count | load_row_count | data_insert_row_count | data_update_row_count | data_delete_row_count | extract_insert_row_count | extract_update_row_count | extract_delete_row_count | load_insert_row_count | load_update_row_count | load_delete_row_count | network_millis | filter_millis | load_millis | router_millis | extract_millis | transform_extract_millis | transform_load_millis | load_id | common_flag | fallback_insert_count | fallback_update_count | conflict_win_count | conflict_lose_count | ignore_row_count | missing_delete_count | skip_count | failed_row_number | failed_line_number | failed_data_id | bulk_loader_flag | 
-| ---: | --- | --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | 
-| 1040 | nano190013 | ds_ch1 | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-19 10:30:43 | 2024-10-19 10:30:43 | role | 0 | 249 | 0 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 8 | 0 | 0 | -1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 
+| batch_id | node_id | channel_id | status | error_flag | sql_state | sql_code | sql_message | last_update_hostname | last_update_time | create_time | summary | ignore_count | byte_count | load_flag | extract_count | sent_count | load_count | reload_row_count | other_row_count | data_row_count | extract_row_count | load_row_count | data_insert_row_count | data_update_row_count | data_delete_row_count | extract_insert_row_count | extract_update_row_count | extract_delete_row_count | load_insert_row_count | load_update_row_count | load_delete_row_count | network_millis | filter_millis | load_millis | router_millis | extract_millis | transform_extract_millis | transform_load_millis | load_id | common_flag | fallback_insert_count | fallback_update_count | conflict_win_count | conflict_lose_count | ignore_row_count | missing_delete_count | skip_count | failed_row_number | failed_line_number | failed_data_id | bulk_loader_flag |
+| ---: | --- | --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1040 | nano190013 | ds_ch1 | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-19 10:30:43 | 2024-10-19 10:30:43 | role | 0 | 249 | 0 | 1 | 1 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 8 | 0 | 0 | -1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
 
-### Insert a row which its foreign key does exist on target node.
-The behavior: Handled as an `update` on target node.
+### Insert a Row Whose Foreign Key Does Not Exist on the Target Node
+The target node handles it as an `update` instead.
 
-Error `1452` can be simulated with the following query if the `author_id` `1` didn't exist on target node,
+Error `1452` can be reproduced with the following query, assuming `author_id` `1` does not exist on the target node:
 
 `INSERT INTO book (name, author_id) VALUES ('Prompt Engineer 2', 1);`
 
-In the table `sym_incoming_error`
+In the table `sym_incoming_error`:
 ---
-| batch_id | node_id | failed_row_number | failed_line_number | target_catalog_name | target_schema_name | target_table_name | event_type | binary_encoding | column_names | pk_column_names | row_data | old_data | cur_data | resolve_data | resolve_ignore | conflict_id | create_time | last_update_by | last_update_time | 
-| ---: | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- | --- | --- | 
-| 1645 | nano190013 | 1 | 1 | dualshield | \N | book | I | HEX | id,name,author_id | id | "4","Prompt Engineer 2","1" | \N | \N | \N | 0 | \N | 2024-10-20 06:26:36 | symmetricds | 2024-10-20 06:26:36 | 
+| batch_id | node_id | failed_row_number | failed_line_number | target_catalog_name | target_schema_name | target_table_name | event_type | binary_encoding | column_names | pk_column_names | row_data | old_data | cur_data | resolve_data | resolve_ignore | conflict_id | create_time | last_update_by | last_update_time |
+| ---: | --- | ---: | ---: | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | --- | --- | --- | --- |
+| 1645 | nano190013 | 1 | 1 | dualshield | \N | book | I | HEX | id,name,author_id | id | "4","Prompt Engineer 2","1" | \N | \N | \N | 0 | \N | 2024-10-20 06:26:36 | symmetricds | 2024-10-20 06:26:36 |
 
-In the table `sym_incoming_batch`
+In the table `sym_incoming_batch`:
 ---
-| batch_id | node_id | channel_id | status | error_flag | sql_state | sql_code | sql_message | last_update_hostname | last_update_time | create_time | summary | ignore_count | byte_count | load_flag | extract_count | sent_count | load_count | reload_row_count | other_row_count | data_row_count | extract_row_count | load_row_count | data_insert_row_count | data_update_row_count | data_delete_row_count | extract_insert_row_count | extract_update_row_count | extract_delete_row_count | load_insert_row_count | load_update_row_count | load_delete_row_count | network_millis | filter_millis | load_millis | router_millis | extract_millis | transform_extract_millis | transform_load_millis | load_id | common_flag | fallback_insert_count | fallback_update_count | conflict_win_count | conflict_lose_count | ignore_row_count | missing_delete_count | skip_count | failed_row_number | failed_line_number | failed_data_id | bulk_loader_flag | 
-| ---: | --- | --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | 
-| 1645 | nano190013 | daisy | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-20 06:26:46 | 2024-10-20 06:26:36 | book | 0 | 137 | 0 | 1 | 2 | 1 | 0 | 0 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 3 | 173 | 0 | 0 | 0 | -1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 
-| 1646 | nano190013 | reload | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-20 06:26:46 | 2024-10-20 06:26:46 | author | 0 | 89 | 0 | 1 | 1 | 0 | 1 | 0 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 4 | 0 | 7 | 0 | 0 | -1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 
+| batch_id | node_id | channel_id | status | error_flag | sql_state | sql_code | sql_message | last_update_hostname | last_update_time | create_time | summary | ignore_count | byte_count | load_flag | extract_count | sent_count | load_count | reload_row_count | other_row_count | data_row_count | extract_row_count | load_row_count | data_insert_row_count | data_update_row_count | data_delete_row_count | extract_insert_row_count | extract_update_row_count | extract_delete_row_count | load_insert_row_count | load_update_row_count | load_delete_row_count | network_millis | filter_millis | load_millis | router_millis | extract_millis | transform_extract_millis | transform_load_millis | load_id | common_flag | fallback_insert_count | fallback_update_count | conflict_win_count | conflict_lose_count | ignore_row_count | missing_delete_count | skip_count | failed_row_number | failed_line_number | failed_data_id | bulk_loader_flag |
+| ---: | --- | --- | --- | ---: | --- | ---: | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1645 | nano190013 | daisy | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-20 06:26:46 | 2024-10-20 06:26:36 | book | 0 | 137 | 0 | 1 | 2 | 1 | 0 | 0 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 3 | 173 | 0 | 0 | 0 | -1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 1646 | nano190013 | reload | OK | 0 | \N | 0 | \N | nanoart-nan0190072 | 2024-10-20 06:26:46 | 2024-10-20 06:26:46 | author | 0 | 89 | 0 | 1 | 1 | 0 | 1 | 0 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 4 | 0 | 7 | 0 | 0 | -1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-This is expected as we have the default parameter on,
+This is expected because the following parameter is enabled by default:
 
 `auto.resolve.foreign.key.violation`
 >If this is true, when a batch receives a foreign key violation, the missing data will be automatically sent to resolve it. The resolution is done at the source node by sending reload batches when it receives the acknowledgement of the batch error.
 Default: `true`
 
-In this case, the log file provided more information.
+The log file provides more detail on what happened:
 
 ```
 2024-10-20 11:39:28,438 INFO [master-nano190072] [DefaultDatabaseWriter] [master-nano190072-dataloader-8] Failed to process insert event in batch nano190013-1950 on channel 'daisy'.
@@ -138,7 +142,7 @@ Caused by: java.sql.SQLIntegrityConstraintViolationException: Cannot add or upda
         ... 16 more
 ```
 
-Please note, the table definition is identical on each node, otherwise you may get this error (I had `id BIGINT(20) NOT NULL AUTO_INCREMENT` on MySQL 5.7, but it was changed to `id BIGINT(19) NOT NULL AUTO_INCREMENT` on MySQL 8. Yes, in my lab, MySQL version is different, and hosted on different OS).
+Note that the table definition must be identical across all nodes. In this lab, a mismatch arose between MySQL 5.7 and MySQL 8.0: MySQL 5.7 used `id BIGINT(20) NOT NULL AUTO_INCREMENT`, while MySQL 8.0 changed this to `id BIGINT(19) NOT NULL AUTO_INCREMENT`.
 
 ```
 2024-10-20 11:39:34,352 INFO [master-nano190072] [RouterService] [master-nano190072-job-3] Routed 1 data events in 25 ms
@@ -154,7 +158,7 @@ Please note, the table definition is identical on each node, otherwise you may g
 2024-10-20 11:39:48,732 ERROR [master-nano190072] [AcknowledgeService] [master-nano190072-push-default-4] The outgoing batch nano190013-385 failed: Odd number of characters.
 ```
 ## auto.resolve
-Please check the default settings for the following violations,  
+Check the default settings for the following conflict resolution parameters:
 ```
 auto.resolve.foreign.key.violation
 auto.resolve.foreign.key.violation.delete
@@ -163,62 +167,62 @@ auto.resolve.primary.key.violation
 auto.resolve.unique.index.violation
 ```
 
-## The last resort for conflict
-In worst scenario, truncate your `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See the details in [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/)
+## Last Resort for Conflicts
+In the worst case, truncate the `sym_data`, `sym_data_event`, and `sym_outgoing_batch` tables. See [How to Migrate a Busy Database](https://www.jumpmind.com/blog/blog/how-to/how-to-migrate-a-busy-database/) for details.
 
 
 ## Integration with DualShield
 
-- Clone **DS** (DualShield)  
-  Follow [How to clone a DualShield server onto a secondary machine for redundancy](https://wiki.deepnetsecurity.com/display/DualShield6/How+to+clone+a+DualShield+server+onto+a+secondary+machine+for+redundancy). 
+- Clone **DS** (DualShield)
+  Follow [How to clone a DualShield server onto a secondary machine for redundancy](https://wiki.deepnetsecurity.com/display/DualShield6/How+to+clone+a+DualShield+server+onto+a+secondary+machine+for+redundancy).
 
-  Modify the `ini` file by adding the following, See the details at [Setting up a MySQL Replication Master](https://wiki.deepnetsecurity.com/display/DualShield6/Setting+up+a+MySQL+Replication+Master).   
+  Modify the `ini` file by adding the following. See [Setting up a MySQL Replication Master](https://wiki.deepnetsecurity.com/display/DualShield6/Setting+up+a+MySQL+Replication+Master) for details:
   ```
   server-id=DS_1/DS_2/.../DS_N
   auto_increment_increment=N
   auto_increment_offset=1/2/.../N
-  ```  
-    
-  Make sure **DS** works on P<sub>1</sub> (Primary One) and C<sub>2-n</sub> (Cloned) individually. Don't worry the replication at this stage.
-
-- Install **SDS** (SymmetricDS)  
-  Follow the procedure above to configure it. Customize `sym_trigger` in [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) on the interested tables you are going to replicate.  but do not enable the triggers on the replication channels (`rose` and `daisy` in the example).
   ```
-  insert into sym_trigger_router 
+
+  Verify that **DS** works on P<sub>1</sub> (Primary) and C<sub>2-n</sub> (Clones) independently before configuring replication.
+
+- Install **SDS** (SymmetricDS)
+  Follow the configuration procedure above. Customize `sym_trigger` in [insert_dualshield_replic.sql](doc/insert_dualshield_replic.sql) for the tables you want to replicate, but do not enable the triggers on the replication channels (`rose` and `daisy` in the example) yet:
+  ```
+  insert into sym_trigger_router
         (trigger_id,router_id, enabled, initial_load_order,last_update_time,create_time)
         values('rose','master_2_master', 0, 100, current_timestamp, current_timestamp);
   ```
-  
-  Check the field `enabled` with,
+
+  Verify the `enabled` field with:
 
   `select trigger_id, router_id, enabled from sym_trigger_router;`
 
-- Stop **DS** service on C<sub>2-n</sub> machines.  
+- Stop the **DS** service on C<sub>2-n</sub> machines:
   `net stop dualshield`
 
-- Export the database on P<sub>1</sub>  
-  `mysqldump -u root -p --single-transaction --opt DualShield > DualShield.sql`  
-  Follow the instruction at [Rebuild Replication](https://wiki.deepnetsecurity.com/display/DualShield6/Rebuild+Replication).
+- Export the database on P<sub>1</sub>:
+  `mysqldump -u root -p --single-transaction --opt DualShield > DualShield.sql`
+  Follow the instructions at [Rebuild Replication](https://wiki.deepnetsecurity.com/display/DualShield6/Rebuild+Replication).
 
-- Enable triggers on P<sub>1</sub>,   
-  `update sym_trigger_router set enabled=1;`  
-  Then start **DS** service to make it back to work.  
+- Enable triggers on P<sub>1</sub>:
+  `update sym_trigger_router set enabled=1;`
+  Then restart the **DS** service:
   `net start dualshield`
 
-- Import the database to C<sub>2-n</sub> machines,  
+- Import the database to C<sub>2-n</sub> machines:
   ```
   mysql> drop database dualshield;
   mysql> create database dualshield CHARACTER SET utf8 COLLATE utf8_general_ci;
   ```
-  Enable the triggers on them, then start **DS** service.
+  Enable the triggers on them, then start the **DS** service.
 
 
-The replication among them should work. If not, find the root cause and repeat the stages above.
+Replication among all nodes should now be working. If it is not, identify the root cause and repeat the relevant steps above.
 
 
 ## Performance Tuning
 
-You can adjust the following parameters for the performance.
+The following parameters can be adjusted to improve performance:
 
 ```
 # Batch size for data transfer
@@ -252,17 +256,17 @@ http.connection.pool.enabled=true
 
 ## Questions
 
-What these system channels do, `config, default,  dynamic,  heartbeat, monitor,  reload`, especially `config`?
+What do these system channels do: `config`, `default`, `dynamic`, `heartbeat`, `monitor`, `reload` — especially `config`?
 
 
 ## PRO Features
-The following are only available in Pro version,
+The following features are only available in the Pro version.
 
 ### Utility `dbcompare`
 
-It may not work between instances, as it need to specify the source and target engine properties file. However in Pro UI, I can select the remote node, but the comparison always in pending.
+This may not work between instances, as it requires specifying the source and target engine properties files. In the Pro UI, selecting a remote node is possible, but the comparison consistently stays in a pending state.
 
- 
+
 ![alt text](./doc/cmp-nodes.png)
 
 ![alt text](./doc/cmp-setting.png)
@@ -273,17 +277,17 @@ It may not work between instances, as it need to specify the source and target e
 
 
 
-### Pro WEB screenshots
-![Dashboard](./doc/sym-dashboard.png)  
-![alt text](./doc/sym-manage.png)  
-![alt text](./doc/sym-design.png)  
-![alt text](./doc/sym-configure.png)  
-![alt text](./doc/sym-explore.png)  
+### Pro Web UI Screenshots
+![Dashboard](./doc/sym-dashboard.png)
+![alt text](./doc/sym-manage.png)
+![alt text](./doc/sym-design.png)
+![alt text](./doc/sym-configure.png)
+![alt text](./doc/sym-explore.png)
 
 ## References
 
-[Pausing Replication In SymmetricDS](https://www.jumpmind.com/blog/blog/how-to/pausing-replication-symmetricds/)  
-[Using Wildcards to Sync Database Tables](https://www.jumpmind.com/blog/blog/how-to/using-wildcards-sync-database/)  
-[Stop Guessing if Your Data is Correct](https://www.jumpmind.com/blog/blog/how-to/stop-guessing-if-your-data-is-correct/)  
-[Disabling Sync Triggers for Session](https://support.jumpmind.com/kb/article/23-Disabling_Sync_Triggers_for_Session)  
-https://stackoverflow.com/questions/78041207/how-to-change-locate-service-sym-tables-to-another-database 
+[Pausing Replication In SymmetricDS](https://www.jumpmind.com/blog/blog/how-to/pausing-replication-symmetricds/)
+[Using Wildcards to Sync Database Tables](https://www.jumpmind.com/blog/blog/how-to/using-wildcards-sync-database/)
+[Stop Guessing if Your Data is Correct](https://www.jumpmind.com/blog/blog/how-to/stop-guessing-if-your-data-is-correct/)
+[Disabling Sync Triggers for Session](https://support.jumpmind.com/kb/article/23-Disabling_Sync_Triggers_for_Session)
+https://stackoverflow.com/questions/78041207/how-to-change-locate-service-sym-tables-to-another-database
