@@ -103,6 +103,78 @@ Practical choices:
 
 That office gateway advertises its local LAN to the OVH hub.
 
+If Office A uses 5G as a backup WAN, the same overall VPN design still applies. The main difference is that the Office A gateway should handle dual uplinks:
+
+- primary WAN: building-managed Internet
+- secondary WAN: 5G broadband
+
+This does not require a different OVH topology. Office A still initiates an outbound tunnel to the OVH hub. When failover happens, Office A may simply appear from a different public source IP.
+
+That is usually acceptable for WireGuard because the Office A peer keeps dialing out to the same OVH endpoint.
+
+## Linux VM as Office Gateway
+
+A Linux VM is acceptable as the office gateway if it is deployed as a real routed gateway, not just as a host that happens to have a WireGuard client.
+
+What the Linux VM must do:
+
+- maintain the outbound WireGuard tunnel continuously
+- forward traffic between the office LAN and the WireGuard interface
+- advertise the office LAN subnet to the OVH hub
+- receive routed traffic for remote subnets from office clients or the local router
+- keep firewall and forwarding rules persistent across reboot
+
+In practice, there are two workable patterns.
+
+Pattern 1: the Linux VM is the office gateway for the relevant subnet.
+
+- office devices use the Linux VM directly as their router, or
+- the Linux VM sits inline between the office LAN and the upstream Internet edge
+
+This is the cleanest model because routing is explicit.
+
+Pattern 2: the Linux VM is an internal routed gateway behind an existing office router.
+
+- the existing office router remains the default gateway for Internet access
+- static routes are added so remote office subnets point to the Linux VM
+
+Example:
+
+- Office A LAN: 192.168.10.0/24
+- Office A Linux VM: 192.168.10.2
+- existing office router: 192.168.10.1
+- add a route on the office router so 192.168.20.0/24 goes to 192.168.10.2
+
+This works well if the local router allows custom static routes.
+
+When a Linux VM is a good fit:
+
+- you already run a stable hypervisor onsite
+- you can control Linux routing and firewall policy
+- you can add static routes on the existing office router, or place the VM inline
+- you want a low-cost proof of concept or a lightweight production gateway
+
+When a Linux VM is a poor fit:
+
+- you cannot change routes on the office network
+- the VM platform is less reliable than a dedicated network appliance
+- you need simple dual-WAN, failover, and monitoring with minimal custom work
+- the office network team wants an appliance-style firewall instead of a general-purpose server
+
+Minimum Linux requirements:
+
+- `net.ipv4.ip_forward=1`
+- a persistent firewall policy using `nftables` or `iptables`
+- WireGuard configured as a system service
+- route persistence after reboot
+- monitoring for tunnel state and VM health
+
+Important limitation:
+
+If the Linux VM cannot become the next hop for remote office subnets, then it is only a VPN client for itself, not an office gateway for the rest of the site.
+
+For Office A with unstable building Internet plus 5G backup, a Linux VM can still work, but a dedicated firewall distribution such as OPNsense or pfSense is usually easier to operate for WAN failover.
+
 ## Home Users
 
 Each home user installs the WireGuard client on:
@@ -173,6 +245,13 @@ Confirm:
 - no overlap between them
 - the IP address of the gateway device in each office
 - which internal servers need cross-office access
+
+If Office A has a backup 5G link, also confirm:
+
+- whether the gateway supports automatic WAN failover
+- whether 5G is presented as Ethernet, DHCP, or USB tethering
+- whether the 5G provider uses CGNAT
+- whether Office A should fail back automatically when the primary WAN recovers
 
 ## 2. Build the OVH Hub
 
@@ -296,6 +375,45 @@ Without this, the VPN may be up while applications still appear broken.
 ## MTU
 
 If file transfer works poorly or some applications hang, check MTU/MSS. This is common when traffic crosses multiple NAT layers or PPPoE links.
+
+This matters even more on 5G backup links, where carrier NAT and encapsulation overhead can differ from the primary WAN.
+
+## 5G Backup at Office A
+
+Using 5G as a backup for Office A is a normal extension of this design. The configuration is mostly similar.
+
+What stays the same:
+
+- OVH remains the central hub
+- Office B configuration is unchanged
+- Office A still builds an outbound tunnel to OVH
+- home users still connect to OVH, not directly to Office A
+- routed subnets stay the same
+
+What changes at Office A:
+
+- the office gateway needs dual-WAN or WAN failover support
+- health checks should decide when to switch from building Internet to 5G
+- the WireGuard tunnel should be bound so it can re-establish over either uplink
+- firewall rules must allow outbound VPN traffic on both uplinks
+
+Important 5G-specific notes:
+
+- many 5G providers use CGNAT, but that is fine here because Office A only needs outbound VPN connectivity
+- do not design anything that depends on inbound connections to Office A over 5G
+- expect different latency and lower stability during failover or cell congestion
+- if billing is usage-based, avoid sending general Internet traffic over the VPN during 5G backup
+
+Recommended behavior:
+
+- keep split tunnel for users
+- keep Internet breakout local at Office A even during backup mode
+- only send traffic for private office subnets across the VPN
+- use `PersistentKeepalive = 25` so the tunnel re-establishes quickly after WAN change
+
+From a routing perspective, nothing fundamental changes. The main operational difference is that Office A's default route to the Internet may switch, causing the tunnel to re-form from a new source IP.
+
+That is why an OVH hub with a fixed public IP is still the right anchor point.
 
 ## Monitoring
 
