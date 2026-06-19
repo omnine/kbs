@@ -96,7 +96,46 @@ Replace or add the Linux supplicant with a Windows 11 VM presenting a client cer
 | 192.168.190.37 (Ubuntu 22.04.4) | RADIUS server (FreeRADIUS) |
 | 192.168.190.50 (Windows 11 VM)  | Supplicant — presents client certificate via EAP-TLS |
 
-Connect the Windows 11 VM's NIC to the same switch/bridge as hostapd's authenticator interface (`ens192` on .62).
+Connect the Windows 11 VM's NIC to the same switch/bridge as hostapd's authenticator interface (`ens18` on .62).
+
+## Proxmox: Allow EAPOL Forwarding
+
+EAPOL uses destination MAC `01:80:c2:00:00:03` (IEEE-reserved multicast). Linux bridges block this by default, so frames from the Windows 11 VM never reach hostapd.
+
+Proxmox adds a per-VM firewall bridge (`fwbr<vmid>i<nic>`) for each VM with firewall enabled, so the frame path is:
+
+```
+tap(win11) → fwbr(win11) → vmbr0 → fwbr(hostapd) → tap(hostapd)
+```
+
+Set `group_fwd_mask=8` (bit 3 = address `:03`) on every bridge in that path — on the **Proxmox host**:
+
+```bash
+for br in vmbr0 fwbr111i0 fwbr113i0 fwbr162i0; do
+    echo 8 > /sys/class/net/$br/bridge/group_fwd_mask
+done
+```
+
+Verify:
+
+```bash
+grep . /sys/class/net/fwbr*/bridge/group_fwd_mask \
+       /sys/class/net/vmbr0/bridge/group_fwd_mask
+```
+
+### Persist across reboots
+
+In `/etc/network/interfaces`, add a `post-up` to the `vmbr0` stanza:
+
+```
+post-up echo 8 > /sys/class/net/vmbr0/bridge/group_fwd_mask
+```
+
+For the `fwbr*` bridges (created dynamically at VM start), add to `/etc/rc.local`:
+
+```bash
+for br in /sys/class/net/fwbr*/bridge/group_fwd_mask; do echo 8 > $br; done
+```
 
 ## Certificate Generation
 
@@ -206,7 +245,7 @@ Start-Service dot3svc
 
 ### 3. Apply 802.1X Profile
 
-Save the following as `eap-tls.xml`, replacing `YOUR-ADAPTER-GUID` if needed:
+Save the following as `eap-tls.xml`:
 
 ```xml
 <?xml version="1.0"?>
@@ -279,6 +318,10 @@ Get-WinEvent -LogName "Microsoft-Windows-Wired-AutoConfig/Operational" -MaxEvent
 ```
 
 On the RADIUS server, the `freeradius -X` output should show the full TLS handshake and `Access-Accept`.
+
+## EAP-TLS Test Results
+
+
 
 # References
 [eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)
