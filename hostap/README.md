@@ -94,7 +94,7 @@ Replace or add the Linux supplicant with a Windows 11 VM presenting a client cer
 | ----    | ----  |
 | 192.168.190.62 (Ubuntu 22.04.4) | Access Point hostapd (wired authenticator) |
 | 192.168.190.37 (Ubuntu 22.04.4) | RADIUS server (FreeRADIUS) |
-| 192.168.190.50 (Windows 11 VM)  | Supplicant — presents client certificate via EAP-TLS |
+| 192.168.190.25 (Windows 11 VM)  | Supplicant — presents client certificate via EAP-TLS |
 
 Connect the Windows 11 VM's NIC to the same switch/bridge as hostapd's authenticator interface (`ens18` on .62).
 
@@ -302,12 +302,12 @@ Get the CA thumbprint to paste into `<TrustedRootCA>`:
 (Get-ChildItem Cert:\LocalMachine\Root | Where-Object { $_.Subject -like "*EAP-TLS Lab CA*" }).Thumbprint
 ```
 
-Apply the profile and trigger authentication:
+Trigger authentication:
 
 ```powershell
-netsh lan add profile filename="eap-tls.xml" interface="Ethernet"
-netsh lan set autoconfig enabled=yes interface="Ethernet"
-netsh lan connect interface="Ethernet"
+# netsh lan add profile filename="eap-tls.xml" interface="Ethernet 2"
+netsh lan set autoconfig enabled=yes interface="Ethernet 2"
+netsh lan connect interface="Ethernet 2"
 ```
 
 ### 4. Verify
