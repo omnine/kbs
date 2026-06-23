@@ -321,9 +321,11 @@ On the RADIUS server, the `freeradius -X` output should show the full TLS handsh
 
 ## EAP-TLS Test Results
 
+I captured the RADIUS traffic, see the attached [EAP-TLS RADIUS capture](./doc/good.pcapng).
 
 
 # References
-[eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)
-[Testing RADIUS from CLI](https://www.securityccie.net/2023/02/04/testing-radius-from-cli/)
-[Testing with eapol_test](https://wiki.geant.org/display/H2eduroam/Testing+with+eapol_test)
+[eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)  
+[Testing RADIUS from CLI](https://www.securityccie.net/2023/02/04/testing-radius-from-cli/)  
+[Testing with eapol_test](https://wiki.geant.org/display/H2eduroam/Testing+with+eapol_test)  
+[How to Set up an Access Point with Hostapd](https://fastskill.net/blog/articles/how-to-set-up-an-access-point-with-hostapd)
