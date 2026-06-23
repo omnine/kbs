@@ -245,51 +245,55 @@ Start-Service dot3svc
 
 ### 3. Apply 802.1X Profile
 
-Save the following as `eap-tls.xml`:
+One the service `dot3svc` is started, we can enable/edit EAP-TLS authentication on Wired NIC card.
+![EAP-TLS authentication on Wired Card](./doc/eap-tls-wired.png)
 
+
+You can show and export the configuration by using `netsh` command,
+```
+PS C:\temp> netsh lan show profiles
+
+Profile on interface Ethernet 2
+=======================================================================
+Applied: User Profile
+
+    Profile Version        : 1
+    Type                   : Wired LAN
+    AutoConfig Version     : 1
+    802.1x                 : Enabled
+    802.1x                 : Not Enforced
+    EAP type               : Microsoft: Smart Card or other certificate (EAP-TLS)
+    802.1X auth credential : Machine or user credential
+    Cache user information : Yes
+
+Machine profile is not installed on this device.
+
+
+PS C:\temp> netsh lan export profile folder=. interface="Ethernet 2"
+
+Interface: Ethernet 2
+Profile File Name: .\Ethernet 2.xml
+
+1 profile(s) were exported successfully.
+```
+
+Here is the example,
 ```xml
 <?xml version="1.0"?>
 <LANProfile xmlns="http://www.microsoft.com/networking/LAN/profile/v1">
-    <MSM>
-        <security>
-            <OneXEnforced>false</OneXEnforced>
-            <OneXEnabled>true</OneXEnabled>
-            <OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
-                <authMode>user</authMode>
-                <EAPConfig>
-                    <EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
-                        <EapMethod>
-                            <Type xmlns="http://www.microsoft.com/provisioning/EapCommon">13</Type>
-                            <VendorId xmlns="http://www.microsoft.com/provisioning/EapCommon">0</VendorId>
-                            <VendorType xmlns="http://www.microsoft.com/provisioning/EapCommon">0</VendorType>
-                            <AuthorId xmlns="http://www.microsoft.com/provisioning/EapCommon">0</AuthorId>
-                        </EapMethod>
-                        <Config xmlns="http://www.microsoft.com/provisioning/EapHostConfig">
-                            <Eap xmlns="http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1">
-                                <Type>13</Type>
-                                <EapType xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1">
-                                    <CredentialsSource>
-                                        <CertificateStore>
-                                            <SimpleCertSelection>true</SimpleCertSelection>
-                                        </CertificateStore>
-                                    </CredentialsSource>
-                                    <ServerValidation>
-                                        <DisableUserPromptForServerValidation>true</DisableUserPromptForServerValidation>
-                                        <ServerNames>radius.lab</ServerNames>
-                                        <TrustedRootCA><!-- SHA-1 thumbprint of ca.crt, no spaces --></TrustedRootCA>
-                                    </ServerValidation>
-                                    <DifferentUsername>false</DifferentUsername>
-                                    <PerformServerValidation xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">true</PerformServerValidation>
-                                    <AcceptServerName xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">true</AcceptServerName>
-                                </EapType>
-                            </Eap>
-                        </Config>
-                    </EapHostConfig>
-                </EAPConfig>
-            </OneX>
-        </security>
-    </MSM>
+	<MSM>
+		<security>
+			<OneXEnforced>false</OneXEnforced>
+			<OneXEnabled>true</OneXEnabled>
+			<OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
+				<cacheUserData>true</cacheUserData>
+				<authMode>machineOrUser</authMode>
+				<EAPConfig><EapHostConfig xmlns="http://www.microsoft.com/provisioning/EapHostConfig"><EapMethod><Type xmlns="http://www.microsoft.com/provisioning/EapCommon">13</Type><VendorId xmlns="http://www.microsoft.com/provisioning/EapCommon">0</VendorId><VendorType xmlns="http://www.microsoft.com/provisioning/EapCommon">0</VendorType><AuthorId xmlns="http://www.microsoft.com/provisioning/EapCommon">0</AuthorId></EapMethod><Config xmlns="http://www.microsoft.com/provisioning/EapHostConfig"><Eap xmlns="http://www.microsoft.com/provisioning/BaseEapConnectionPropertiesV1"><Type>13</Type><EapType xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV1"><CredentialsSource><CertificateStore><SimpleCertSelection>true</SimpleCertSelection></CertificateStore></CredentialsSource><ServerValidation><DisableUserPromptForServerValidation>false</DisableUserPromptForServerValidation><ServerNames>das8.la.deepnetid.com</ServerNames><TrustedRootCA>ca bd 2a 79 a1 07 6a 31 f2 1d 25 36 35 cb 03 9d 43 29 a5 e8 </TrustedRootCA></ServerValidation><DifferentUsername>false</DifferentUsername><PerformServerValidation xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">true</PerformServerValidation><AcceptServerName xmlns="http://www.microsoft.com/provisioning/EapTlsConnectionPropertiesV2">true</AcceptServerName></EapType></Eap></Config></EapHostConfig></EAPConfig>
+			</OneX>
+		</security>
+	</MSM>
 </LANProfile>
+
 ```
 
 Get the CA thumbprint to paste into `<TrustedRootCA>`:
