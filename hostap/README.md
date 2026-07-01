@@ -1,6 +1,6 @@
 # Virtual Access Point - Wired EAP Lab
-In order to test RADIUS authentication with EAP-PEAP, generally a physical WIFI access point is needed.
-**Note** If you are only interested in testing EAP-PEAP/EAP-TLS on RADIUS protocol level, you can skip the hostapd setup and use FreeRADIUS (or any alternative RADIUS server) with eapol_test as RADIUS client.
+In order to test RADIUS authentication with EAP-PEAP, generally a physical WIFI access point is needed.  
+**Note:** If you are only interested in testing EAP-PEAP/EAP-TLS on RADIUS protocol level, you can skip the hostapd setup and use FreeRADIUS (or any alternative RADIUS server) with eapol_test as RADIUS client.
 ## Lab
 
 | Machine | Roles |
