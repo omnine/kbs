@@ -332,6 +332,137 @@ On the RADIUS server, the `freeradius -X` output should show the full TLS handsh
 
 I captured the RADIUS traffic, see the attached [EAP-TLS RADIUS capture](./doc/good.pcapng).
 
+# True Wireless EAP Lab (AR9271 USB dongles over Proxmox passthrough)
+
+Everything above uses hostapd's *wired* driver (`CONFIG_DRIVER_WIRED`) — there's no actual over-the-air 802.11 involved. This section replaces the wired link with real Wi-Fi using two Qualcomm Atheros AR9271 USB dongles (USB ID `0cf3:9271`, `ath9k_htc` driver), each passed through to a different Proxmox VM: one becomes the hostapd SoftAP, the other becomes the wireless NIC of the Windows 11 client. The RADIUS server and certificates from the EAP-TLS section above are reused unchanged — only the transport between authenticator and supplicant becomes wireless.
+
+## Updated Lab
+
+| Machine | Roles |
+| ---- | ---- |
+| Linux VM (Proxmox) | hostapd SoftAP, AR9271 dongle #1 passed through |
+| 192.168.190.37 (Ubuntu) | RADIUS server (FreeRADIUS) — unchanged |
+| Windows 11 VM (Proxmox) | Wireless supplicant, AR9271 dongle #2 passed through |
+
+## 1. Identify the dongles on the Proxmox host
+
+```bash
+lsusb | grep -i atheros
+# Bus 003 Device 004: ID 0cf3:9271 Qualcomm Atheros Communications AR9271 802.11n
+```
+
+Both dongles report the **same** vendor:product ID (`0cf3:9271`), so tell them apart by USB bus/port, not by ID:
+
+```bash
+lsusb -t
+```
+
+**Do not let the Proxmox host itself bind `ath9k_htc` to either dongle.** Passthrough hands the raw USB device to the guest, which loads its own driver/firmware; if the host claims it first you'll see contention in `dmesg` and the guest may fail to init the radio. Blacklist it on the host:
+
+```bash
+echo "blacklist ath9k_htc" | sudo tee /etc/modprobe.d/blacklist-ath9k-htc.conf
+sudo rmmod ath9k_htc 2>/dev/null  # if already loaded
+```
+
+## 2. Map the USB devices in Proxmox (survive reboot/replug)
+
+Raw `bus-port` passthrough shifts if a dongle is unplugged/replugged or the host reboots and re-enumerates USB. Use a persistent **Resource Mapping** instead, pinned to the physical port so the two identical-ID dongles don't get swapped:
+
+Datacenter → Resource Mappings → USB Devices → Add, once per dongle, selecting the specific bus/port. Or via CLI:
+
+```bash
+pvesh create /cluster/mapping/usb --id wlan-ap     --map node=<node>,path=<bus>-<port>,id=0cf3:9271
+pvesh create /cluster/mapping/usb --id wlan-client --map node=<node>,path=<bus>-<port>,id=0cf3:9271
+```
+
+## 3. Attach to the VMs
+
+```bash
+qm set <ap-vmid>  -usb0 mapping=wlan-ap
+qm set <win-vmid> -usb0 mapping=wlan-client
+```
+
+(GUI equivalent: VM → Hardware → Add → USB Device → Use USB Mapping → `wlan-ap` / `wlan-client`.) Start both VMs after attaching.
+
+## 4. Linux AP VM: bring up the wireless interface
+
+```bash
+lsusb                 # dongle visible inside the guest
+dmesg | grep -i ath9k  # ath9k_htc probes, firmware htc_9271.fw loads
+ip link                # new wlan interface, e.g. wlan0 or wlxXXXXXXXXXXXX
+rfkill unblock all
+iw list | grep -A10 "Supported interface modes"   # confirm AP is listed
+```
+
+Stop NetworkManager/wpa_supplicant from managing the AP radio so hostapd can bind it exclusively:
+
+```bash
+sudo nmcli device set wlan0 managed no
+```
+
+## 5. hostapd config for wireless EAP
+
+New sample: [`doc/wlan-ap.conf`](./doc/wlan-ap.conf) — same RADIUS backend as `wired.conf`, but `driver=nl80211` over the real radio, WPA2-Enterprise instead of plain `ieee8021x=1`:
+
+```bash
+sudo hostapd doc/wlan-ap.conf -dd
+```
+
+## 6. Windows 11 VM: driver + wireless client
+
+1. **Driver**: Windows Update usually auto-detects "Qualcomm Atheros AR9271 802.11n". If not, install the vendor driver (e.g. TP-Link TL-WN722N v1 / Netis WF2120 use the same AR9271 chipset and driver package). Confirm in Device Manager → Network adapters, and:
+   ```powershell
+   netsh wlan show interfaces
+   ```
+2. **WLAN AutoConfig service** (`wlansvc`) is Automatic by default (unlike the wired `dot3svc` used earlier) — verify it's running:
+   ```powershell
+   Get-Service wlansvc
+   ```
+3. **Certificates**: import `ca.crt` and `client.pfx` exactly as in the [Windows 11 Setup](#windows-11-setup) section above — same CA, same client cert, only the transport changed.
+4. **Wi-Fi profile**: same `EapHostConfig` block as the wired `LANProfile` XML, but wrapped in a `WLANProfile` with SSID and WPA2-Enterprise/AES framing:
+   ```xml
+   <?xml version="1.0"?>
+   <WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+       <name>nanoart-eap</name>
+       <SSIDConfig>
+           <SSID><name>nanoart</name></SSID>
+       </SSIDConfig>
+       <connectionType>ESS</connectionType>
+       <connectionMode>manual</connectionMode>
+       <MSM>
+           <security>
+               <authEncryption>
+                   <authentication>WPA2</authentication>
+                   <encryption>AES</encryption>
+                   <useOneX>true</useOneX>
+               </authEncryption>
+               <OneX xmlns="http://www.microsoft.com/networking/OneX/v1">
+                   <cacheUserData>true</cacheUserData>
+                   <authMode>machineOrUser</authMode>
+                   <!-- same <EAPConfig><EapHostConfig>...</EapHostConfig></EAPConfig> block as the wired LANProfile above -->
+               </OneX>
+           </security>
+       </MSM>
+   </WLANProfile>
+   ```
+   ```powershell
+   netsh wlan add profile filename="nanoart-eap.xml"
+   netsh wlan connect name="nanoart-eap" ssid="nanoart"
+   ```
+
+## 7. Verify
+
+```powershell
+netsh wlan show interfaces   # State: connected, Authentication: WPA2-Enterprise
+```
+
+On the RADIUS server, `freeradius -X` should show the same TLS handshake and `Access-Accept` as the wired test. On the AP VM, `hostapd -dd` shows the STA associating and completing EAPOL before `AP-STA-CONNECTED`.
+
+## Caveats specific to AR9271
+
+- 2.4 GHz only, single spatial stream, HT20 max (no HT40, no 5 GHz) — plan channel/SSID accordingly.
+- One interface mode at a time per dongle (can't run AP and monitor concurrently on the same radio) — not an issue here since each dongle is dedicated to one role.
+- USB passthrough (not PCIe): if a guest crashes or is force-stopped while holding the radio, the host may need `qm stop`/`qm start` or a physical replug before the next guest can claim it cleanly.
 
 # References
 [eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)  
