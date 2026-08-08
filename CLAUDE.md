@@ -49,3 +49,13 @@ Most content is documentation. Executable components:
 - **radsecproxy**: Bridges UDP RADIUS to TLS RADIUS; certificate pinning configured per-realm
 - **hostap**: Uses `hostapd` + `wpa_supplicant` to create a virtual wired EAP test environment without physical switches
 - **maonprem**: Modern Authentication for on-premises Exchange requires ADFS with OAuth2 token endpoint configuration
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `omnine/kbs` (uses `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context — `CONTEXT.md` + `docs/adr/` at repo root. See `docs/agents/domain.md`.
