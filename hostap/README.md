@@ -368,12 +368,19 @@ sudo rmmod ath9k_htc 2>/dev/null  # if already loaded
 
 Raw `bus-port` passthrough shifts if a dongle is unplugged/replugged or the host reboots and re-enumerates USB. Use a persistent **Resource Mapping** instead, pinned to the physical port so the two identical-ID dongles don't get swapped:
 
-Datacenter → Resource Mappings → USB Devices → Add, once per dongle, selecting the specific bus/port. Or via CLI:
+Datacenter → Resource Mappings → USB Devices → Add, once per dongle, selecting the specific bus/port. Or via CLI. `path` is `<bus>-<port>` from `lsusb -t` **without zero-padding** — `1-11`, not `001-011` (the padded form fails PVE's path regex silently and later shows up as "USB Mapping invalid ... usb device not found"):
 
 ```bash
-pvesh create /cluster/mapping/usb --id wlan-ap     --map node=<node>,path=<bus>-<port>,id=0cf3:9271
-pvesh create /cluster/mapping/usb --id wlan-client --map node=<node>,path=<bus>-<port>,id=0cf3:9271
+lsusb -t
+# /:  Bus 001.Port 001: Dev 001, Class=root_hub, Driver=xhci_hcd/16p, 480M
+#     |__ Port 011: Dev 036, If 0, Class=Vendor Specific Class, Driver=[none], 480M
+#     |__ Port 013: Dev 035, If 0, Class=Vendor Specific Class, Driver=[none], 480M
+
+pvesh create /cluster/mapping/usb --id wlan-ap     --map node=<node>,path=1-11,id=0cf3:9271
+pvesh create /cluster/mapping/usb --id wlan-client --map node=<node>,path=1-13,id=0cf3:9271
 ```
+
+Confirm both dongles sit on a `480M` (USB2) port, not a `5000M`/`10000M` (USB3/xHCI) one — see [Troubleshooting](#troubleshooting-ar9271-init-failures) below for why that matters.
 
 ## 3. Attach to the VMs
 
@@ -382,7 +389,7 @@ qm set <ap-vmid>  -usb0 mapping=wlan-ap
 qm set <win-vmid> -usb0 mapping=wlan-client
 ```
 
-(GUI equivalent: VM → Hardware → Add → USB Device → Use USB Mapping → `wlan-ap` / `wlan-client`.) Start both VMs after attaching.
+(GUI equivalent: VM → Hardware → Add → USB Device → Use USB Mapping → `wlan-ap` / `wlan-client`.) Prefer attaching while each VM is **stopped**, then start it — live hotplug onto a running VM is more prone to the "not found" error above if the device's bus/port shifted even slightly since the mapping was created.
 
 ## 4. Linux AP VM: bring up the wireless interface
 
@@ -463,6 +470,43 @@ On the RADIUS server, `freeradius -X` should show the same TLS handshake and `Ac
 - 2.4 GHz only, single spatial stream, HT20 max (no HT40, no 5 GHz) — plan channel/SSID accordingly.
 - One interface mode at a time per dongle (can't run AP and monitor concurrently on the same radio) — not an issue here since each dongle is dedicated to one role.
 - USB passthrough (not PCIe): if a guest crashes or is force-stopped while holding the radio, the host may need `qm stop`/`qm start` or a physical replug before the next guest can claim it cleanly.
+
+## Troubleshooting AR9271 init failures
+
+**Windows shows "There is no wireless interface on the system" for `netsh wlan show interfaces`**
+
+1. Device Manager → is the dongle under *Network adapters*, or stuck under *Other devices*/*Universal Serial Bus devices* with a warning icon? The latter means the NIC driver never bound — reinstall the vendor driver.
+2. `Get-Service wlansvc` — WLAN AutoConfig must be Running (unlike wired `dot3svc`, this one usually is by default; check anyway).
+3. Was the VM restarted after `qm set <vmid> -usb0 mapping=...`? Hot-add often doesn't surface until reboot: `qm stop <vmid>` then `qm start <vmid>`.
+4. On the Proxmox host, confirm the device actually attached to that VM and isn't still bound to the host's `ath9k_htc`: `qm monitor <vmid>` → `info usb`; `dmesg`/`lsusb` on the host should **not** show it once passed through.
+
+**Host `dmesg` shows `ath: phyN: Unable to initialize hardware; initialization status: -5` / `ath9k_htc: Failed to initialize the device`**
+
+`-5` is `EIO` from the firmware upload stage. Known causes, in order of likelihood:
+
+- **USB3/xHCI port.** ath9k_htc's firmware handshake is timing-sensitive and a long-standing class of bug fails it specifically behind xHCI. Check the port speed — `lsusb -t` or `cat /sys/bus/usb/devices/usbN/speed`: `480` = USB2 (fine), `5000`/`10000` = USB3 (move the dongle to a USB2 port or a USB2 hub).
+- **Underpowered port.** Same fix — powered USB2 hub.
+- **Corrupt/missing firmware** on host: `ls -la /lib/firmware/htc_9271.fw`; reinstall with `apt install --reinstall firmware-atheros`.
+
+Note this failure happens on the **host** only if the host's own `ath9k_htc` is still bound (blacklist not yet applied — see step 1). Once blacklisted, the guest's driver does the init instead; if the root cause is USB3/power, the guest will hit the same `-5`.
+
+**Dongle vanishes from the bus entirely — `lsusb` empty, `ls /sys/bus/usb/devices/` shows only `usbN` root hubs, no child devices**
+
+A failed init sometimes doesn't just fail the driver bind, it drops the device off the bus completely. No software fix from the host side once this happens:
+
+- Check for a switchable hub first: `apt install uhubctl && uhubctl` — if the port supports power switching, `uhubctl -a cycle -p <port> -l <hub-location>` may bring it back without physical access.
+- Otherwise it needs a physical unplug/replug at the next hands-on visit. Once it re-enumerates cleanly (`lsusb -t` shows it with a real port number, ideally on the `480M` bus), re-apply the `ath9k_htc` blacklist before attaching passthrough again.
+
+**`qm set <vmid> -usb0 mapping=<name>` fails: `usb device '<bus>-<port>' not found` (often preceded by a `Use of uninitialized value in pattern match` warning)**
+
+Mapping `path` must be `<bus>-<port>` **without zero-padding** (`1-11`, not `001-011`) — the padded form fails PVE's internal parsing. Recreate the mapping with the correct format:
+
+```bash
+pvesh delete /cluster/mapping/usb/<name>
+pvesh create /cluster/mapping/usb --id <name> --map node=<node>,path=<bus>-<port>,id=0cf3:9271
+```
+
+If it still fails, the device likely re-enumerated to a different port between mapping creation and attach (these dongles are flaky) — re-check `lsusb -t` for its current port, and prefer attaching to a **stopped** VM rather than hotplugging into a running one.
 
 # References
 [eapol_test FreeRADIUS](https://openwrt.org/docs/guide-user/network/wifi/freeradius)  
