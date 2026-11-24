@@ -8,7 +8,19 @@ if ($LASTEXITCODE -ne 0) { throw "Markdown conversion failed" }
 $draft = Get-Content $htmlPath -Raw -Encoding UTF8
 
 $ol = [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')
-$mail = $ol.ActiveExplorer().Selection.Item(1)
+
+# Reply to the email outlook-read-selected.ps1 read, not whatever is selected now.
+# Fail rather than fall back to the selection: a reply to the wrong email is worse than no reply.
+$idFile = Join-Path $env:TEMP 'claude_outlook_selected.txt'
+if (-not (Test-Path $idFile)) { throw "No remembered email ($idFile missing). Run outlook-read-selected.ps1 first." }
+$ids = [IO.File]::ReadAllLines($idFile, [Text.Encoding]::UTF8)
+try {
+    $mail = $ol.Session.GetItemFromID($ids[0], $ids[1])
+} catch {
+    throw "Could not open the remembered email '$($ids[2])' (moved or deleted?). Select it and run outlook-read-selected.ps1 again. $($_.Exception.Message)"
+}
+Write-Output ('Replying to: ' + $mail.Subject + ' (from ' + $mail.SenderName + ')')
+
 $reply = $mail.ReplyAll()
 $body = $reply.HTMLBody
 

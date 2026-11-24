@@ -3,6 +3,12 @@
 # Must run under Windows PowerShell 5.1 (powershell.exe): PowerShell 7 has no Marshal.GetActiveObject.
 $ol = [Runtime.InteropServices.Marshal]::GetActiveObject('Outlook.Application')
 $mail = $ol.ActiveExplorer().Selection.Item(1)
+
+# Remember exactly which email this was, so outlook-draft-reply.ps1 replies to it even if the
+# user selects another email in the meantime. Line 1: EntryID, line 2: StoreID, line 3: subject.
+$idFile = Join-Path $env:TEMP 'claude_outlook_selected.txt'
+[IO.File]::WriteAllLines($idFile, [string[]]@($mail.EntryID, $mail.Parent.StoreID, $mail.Subject), [Text.UTF8Encoding]::new($false))
+
 Write-Output ('Subject: ' + $mail.Subject)
 Write-Output ('From: ' + $mail.SenderName)
 Write-Output ('To: ' + $mail.To)
