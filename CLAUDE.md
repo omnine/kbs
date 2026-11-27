@@ -19,7 +19,7 @@ Each top-level directory is an independent project:
 | Web Services | `discourse/`, `webpack-svg-inline/`, `OOF/` |
 | Monitoring & Diagnostics | `watchglowroot/`, `ranports/` |
 | Build Automation | `sln2cmake/` |
-| Claude Code Skills | `openproject-issue/` |
+| Claude Code Skills | `openproject-issue/`, `wikijs-page/` |
 | Other | `dualsession/` |
 
 ## Runnable Code
@@ -29,6 +29,7 @@ Most content is documentation. Executable components:
 - **PowerShell** (`intune/`): `Deploy.ps1`, `Deploy2.ps1`, `Remove.ps1`, `detection_rule.ps1` — Intune Win32 app deployment scripts
 - **Java** (`ranports/AgentPremain.java`): Byte Buddy Java agent for tracing `SocketChannel.connect()` calls; compile with standard `javac` and package as a JAR with `Premain-Class` manifest attribute
 - **PowerShell / Python** (`openproject-issue/scripts/New-OpenProjectIssue.ps1` for Windows, `new_openproject_issue.py` for Linux/macOS, Python 3.8+ stdlib only): create OpenProject work packages via REST API v3; need `OPENPROJECT_URL` and `OPENPROJECT_API_KEY`. Used by the `openproject-issue` Claude Code skill (`SKILL.md`)
+- **Python** (`wikijs-page/scripts/new_wikijs_page.py`, 3.8+ stdlib only): creates pages in Wiki.js 3.x via its REST API (`/_api`); needs `WIKIJS_URL` and a personal access token in `WIKIJS_TOKEN`. Used by the `wikijs-page` Claude Code skill (`SKILL.md`)
 - **Shell** (`firewall.sh`, `nftables.conf`): Linux firewall configuration; run as root with `bash firewall.sh`
 
 ## Architecture Patterns
