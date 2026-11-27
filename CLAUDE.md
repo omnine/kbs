@@ -28,7 +28,7 @@ Most content is documentation. Executable components:
 
 - **PowerShell** (`intune/`): `Deploy.ps1`, `Deploy2.ps1`, `Remove.ps1`, `detection_rule.ps1` — Intune Win32 app deployment scripts
 - **Java** (`ranports/AgentPremain.java`): Byte Buddy Java agent for tracing `SocketChannel.connect()` calls; compile with standard `javac` and package as a JAR with `Premain-Class` manifest attribute
-- **PowerShell** (`openproject-issue/scripts/New-OpenProjectIssue.ps1`): creates OpenProject work packages via REST API v3; needs `OPENPROJECT_URL` and `OPENPROJECT_API_KEY`. Used by the `openproject-issue` Claude Code skill (`SKILL.md`)
+- **PowerShell / Python** (`openproject-issue/scripts/New-OpenProjectIssue.ps1` for Windows, `new_openproject_issue.py` for Linux/macOS, Python 3.8+ stdlib only): create OpenProject work packages via REST API v3; need `OPENPROJECT_URL` and `OPENPROJECT_API_KEY`. Used by the `openproject-issue` Claude Code skill (`SKILL.md`)
 - **Shell** (`firewall.sh`, `nftables.conf`): Linux firewall configuration; run as root with `bash firewall.sh`
 
 ## Architecture Patterns
